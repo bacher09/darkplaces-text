@@ -2,11 +2,16 @@
 {-# OPTIONS_GHC -w #-}
 module DarkPlaces.Text.Lexer (
     DPTextToken(..),
-    DPText(),
+    DPText(..),
     parseDPText
 ) where
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BLC
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
+import Data.Text.Encoding
+import qualified Data.Text.Lazy.Encoding as  TLE
+import Data.String
 import Numeric
 }
 
@@ -22,24 +27,28 @@ words :-
 
     @simple_color      { simpleColor }
     @hex_color         { hexColor }
-    @other             { DPString }
+    @other             { DPString . decodeUtf8 . BL.toStrict }
 
 {
+data DPTextToken = SimpleColor Int
+                 | HexColor Int
+                 | DPString T.Text
+    deriving(Show, Eq)
+
+
+newtype DPText = DPText [DPTextToken]
+    deriving(Show, Eq)
+
+
 simpleColor :: BL.ByteString -> DPTextToken
 simpleColor = SimpleColor . fst . head . readDec . BLC.unpack . BL.drop 1
 
 hexColor :: BL.ByteString -> DPTextToken
 hexColor = HexColor . fst . head . readHex . BLC.unpack . BL.drop 2
 
-data DPTextToken = SimpleColor Int
-                 | HexColor Int
-                 | DPString BL.ByteString
-    deriving(Show, Eq)
-
-
-type DPText = [DPTextToken]
-
-
 parseDPText :: BL.ByteString -> DPText
-parseDPText = alexScanTokens
+parseDPText = DPText . alexScanTokens
+
+instance IsString DPText where
+    fromString = parseDPText . TLE.encodeUtf8 . TL.pack
 }
