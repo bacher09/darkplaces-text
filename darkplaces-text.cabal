@@ -14,11 +14,14 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     DarkPlaces.Text
-  other-modules:       DarkPlaces.Text.Lexer
+  other-modules:       DarkPlaces.Text.Lexer,
+                       DarkPlaces.Text.Chars
   -- other-extensions:    
   build-depends:       base >=4.7 && <4.8,
                        bytestring >=0.10 && <0.11,
-                       array
+                       array,
+                       text >=1.0,
+                       vector >=0.10
 
   build-tools:         alex
   hs-source-dirs:      src
