@@ -1,5 +1,7 @@
 module DarkPlaces.Text.Chars where
 import Data.Vector
+import Data.Char
+import qualified Data.Text as T
 
 
 -- from https://github.com/xonotic/darkplaces/blob/master/console.c#L116
@@ -108,3 +110,17 @@ qfont_unicode_table = fromList [
     '\88',      '\89',      '\90',      '\123',
     '\124',     '\125',     '\126',     '\9664'
     ]
+
+
+decodeQFont :: Vector Char -> T.Text -> T.Text
+decodeQFont qtable = T.map replace_char
+  where
+    replace_char c = if '\xe000' <= c && c <= '\xe0ff'
+        then qtable ! (ord c - 0xe000)
+        else c
+
+decodeQFontASCII :: T.Text -> T.Text
+decodeQFontASCII = decodeQFont qfont_ascii_table
+
+decodeQFontUTF :: T.Text -> T.Text
+decodeQFontUTF = decodeQFont qfont_unicode_table
