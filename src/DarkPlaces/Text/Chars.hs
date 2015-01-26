@@ -2,6 +2,7 @@ module DarkPlaces.Text.Chars where
 import Data.Vector
 
 
+-- from https://github.com/xonotic/darkplaces/blob/master/console.c#L116
 qfont_ascii_table :: Vector Char
 qfont_ascii_table = fromList [
      '\0', '#',  '#',  '#',  '#',  '.',  '#',  '#',
@@ -39,6 +40,7 @@ qfont_ascii_table = fromList [
     ]
 
 
+-- from https://github.com/antzucaro/XonStat/blob/master/xonstat/util.py#L64
 qfont_unicode_table :: Vector Char
 qfont_unicode_table = fromList [
     '\32',      '\32',      '\8212',    '\32',
