@@ -3,7 +3,9 @@
 module DarkPlaces.Text.Lexer (
     DPTextToken(..),
     DPText(..),
-    parseDPText
+    parseDPText,
+    isString,
+    isColor
 ) where
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BLC
@@ -48,6 +50,15 @@ hexColor = HexColor . fst . head . readHex . BLC.unpack . BL.drop 2
 
 parseDPText :: BL.ByteString -> DPText
 parseDPText = DPText . alexScanTokens
+
+isString :: DPTextToken -> Bool
+isString (DPString _) = True
+isString _ = False
+
+isColor :: DPTextToken -> Bool
+isColor (SimpleColor _) = True
+isColor (HexColor _) = True
+isColor _ = False
 
 instance IsString DPText where
     fromString = parseDPText . TLE.encodeUtf8 . TL.pack
