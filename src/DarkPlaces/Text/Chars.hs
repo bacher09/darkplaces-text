@@ -2,6 +2,7 @@ module DarkPlaces.Text.Chars where
 import Data.Vector
 import Data.Char
 import qualified Data.Text as T
+import DarkPlaces.Text.Lexer
 
 
 -- from https://github.com/xonotic/darkplaces/blob/master/console.c#L116
@@ -124,3 +125,15 @@ decodeQFontASCII = decodeQFont qfont_ascii_table
 
 decodeQFontUTF :: T.Text -> T.Text
 decodeQFontUTF = decodeQFont qfont_unicode_table
+
+decodeDPText :: (T.Text -> T.Text) -> DPText -> DPText
+decodeDPText f (DPText t) = DPText $ fmap mfun t
+  where
+    mfun (DPString s) = DPString $ f s
+    mfun x = x
+
+decodeDPTextASCII :: DPText -> DPText
+decodeDPTextASCII = decodeDPText decodeQFontASCII
+
+decodeDPTextUTF :: DPText -> DPText
+decodeDPTextUTF = decodeDPText decodeQFontUTF
