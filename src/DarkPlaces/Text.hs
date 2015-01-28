@@ -2,9 +2,11 @@ module DarkPlaces.Text (
     DPText(..),
     DPTextToken(..),
     parseDPText,
+    stripColors,
+    hPutStrUtf,
+    hPutStrLnUtf,
     putStrUtf,
     putStrLnUtf,
-    stripColors
 ) where
 import DarkPlaces.Text.Lexer
 import DarkPlaces.Text.Colors
@@ -13,6 +15,7 @@ import Numeric
 import qualified Data.Text.Lazy as TL
 import System.Console.ANSI
 import qualified Data.Text.IO as TIO
+import System.IO (Handle, stdout, hPutStrLn)
 
 
 class ToText a where
@@ -49,21 +52,27 @@ simplifyColors (DPText t) =  DPText $ map convert t
     convert x = x
 
 
-printColors' :: DPText -> IO ()
-printColors' (DPText t) = mapM_ print t
+printColors' :: Handle -> DPText -> IO ()
+printColors' f (DPText t) = mapM_ print t
   where
-    print (SimpleColor c) = setSGR (getColor c)
-    print (DPString s) = TIO.putStr s
+    print (SimpleColor c) = hSetSGR f (getColor c)
+    print (DPString s) = TIO.hPutStr f s
     print _ = return ()
 
 
-printColors :: DPText -> IO ()
-printColors = printColors' . minimizeColors . simplifyColors
+printColors :: Handle -> DPText -> IO ()
+printColors h = printColors' h . minimizeColors . simplifyColors
 
+
+hPutStrUtf :: Handle -> DPText -> IO ()
+hPutStrUtf h t = printColors h (decodeDPTextUTF t) >> hSetSGR h [Reset]
+
+
+hPutStrLnUtf :: Handle -> DPText -> IO ()
+hPutStrLnUtf h t = hPutStrUtf h t >> hPutStrLn h ""
 
 putStrUtf :: DPText -> IO ()
-putStrUtf t = printColors (decodeDPTextUTF t) >> setSGR [Reset]
-
+putStrUtf = hPutStrUtf stdout
 
 putStrLnUtf :: DPText -> IO ()
-putStrLnUtf t = putStrUtf t >> putStrLn ""
+putStrLnUtf = hPutStrLnUtf stdout
