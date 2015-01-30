@@ -1,15 +1,15 @@
 name:                darkplaces-text
 version:             0.1
-synopsis:            DarkPlaces text parser and utils
--- description:         
+synopsis:            Parser for darkplaces colorful text
 license:             GPL-2
 license-file:        LICENSE
 author:              Slava Bacherikov
 maintainer:          slava@bacher09.org
--- copyright:           
+homepage:            https://github.com/bacher09/darkplaces-text
+bug-reports:         https://github.com/bacher09/darkplaces-text/issues
 category:            Game
 build-type:          Simple
--- extra-source-files:  
+copyright:           (c) Slava Bacherikov 2015
 cabal-version:       >=1.10
 
 library
