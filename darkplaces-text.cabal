@@ -1,6 +1,5 @@
 name:                darkplaces-text
 version:             0.1
-synopsis:            Parser for darkplaces colorful text
 license:             GPL-2
 license-file:        LICENSE
 author:              Slava Bacherikov
@@ -11,6 +10,12 @@ category:            Game
 build-type:          Simple
 copyright:           (c) Slava Bacherikov 2015
 cabal-version:       >=1.10
+synopsis:            Parser for darkplaces colorful text
+description:
+
+  This package supports parsing and displaying darkplaces colorfull text.
+  Darkplaces text may contains special color tags and unicode glyphs
+  that are unique for darkplaces fonts.
 
 library
   exposed-modules:     DarkPlaces.Text
