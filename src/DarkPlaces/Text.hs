@@ -31,6 +31,7 @@ instance ToText DPText where
     toText (DPText x) = TL.concat $ map toText x
 
 
+-- | Removes colors from `DPText`
 stripColors :: DPText -> DPText
 stripColors (DPText t) = DPText $ filter isString t
 
@@ -72,8 +73,10 @@ hPutStrUtf h t = printColors h (decodeDPTextUTF t) >> hSetSGR h [Reset]
 hPutStrLnUtf :: Handle -> DPText -> IO ()
 hPutStrLnUtf h t = hPutStrUtf h t >> hPutStrLn h ""
 
+-- | prints `DPText` to console using utf8 encoding
 putStrUtf :: DPText -> IO ()
 putStrUtf = hPutStrUtf stdout
 
+-- | same as `putStrUtf` but with newline break at the end
 putStrLnUtf :: DPText -> IO ()
 putStrLnUtf = hPutStrLnUtf stdout

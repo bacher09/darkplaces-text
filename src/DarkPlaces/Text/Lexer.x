@@ -48,6 +48,7 @@ simpleColor = SimpleColor . fst . head . readDec . BLC.unpack . BL.drop 1
 hexColor :: BL.ByteString -> DPTextToken
 hexColor = HexColor . fst . head . readHex . BLC.unpack . BL.drop 2
 
+-- | convert lazy `BL.ByteString` to `DPText`
 parseDPText :: BL.ByteString -> DPText
 parseDPText = DPText . alexScanTokens
 
