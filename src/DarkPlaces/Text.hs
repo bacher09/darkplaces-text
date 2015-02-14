@@ -75,6 +75,10 @@ hPutStrUtf :: Handle -> DPText -> IO ()
 hPutStrUtf h t = printColors h (decodeDPTextUTF t) >> hSetSGR h [Reset]
 
 
+hPutStrUtfNoColors :: Handle -> DPText -> IO ()
+hPutStrUtfNoColors h t = printColors' h $ decodeDPTextUTF $ stripColors t
+
+
 hPutStrLnUtf :: Handle -> DPText -> IO ()
 hPutStrLnUtf h t = hPutStrUtf h t >> hPutStrLn h ""
 
@@ -95,7 +99,7 @@ hPrintDPText handle color text = case color of
         is_term <- hIsTerminalDevice handle
         if is_term
             then hPutStrUtf handle dptext
-            else printColors' handle $ stripColors dptext
+            else hPutStrUtfNoColors handle dptext
   where
     dptext = parseDPText text
 
