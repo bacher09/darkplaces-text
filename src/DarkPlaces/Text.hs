@@ -8,6 +8,10 @@ module DarkPlaces.Text (
     hPutStrLnUtf,
     putStrUtf,
     putStrLnUtf,
+    printColors,
+    printColors',
+    hPrintDPText,
+    printDPText,
 ) where
 import DarkPlaces.Text.Lexer
 import DarkPlaces.Text.Colors
@@ -16,7 +20,8 @@ import Numeric
 import qualified Data.Text.Lazy as TL
 import System.Console.ANSI
 import qualified Data.Text.IO as TIO
-import System.IO (Handle, stdout, hPutStrLn)
+import System.IO (Handle, stdout, hPutStrLn, hIsTerminalDevice)
+import qualified Data.ByteString.Lazy as BL
 
 
 class ToText a where
@@ -80,3 +85,20 @@ putStrUtf = hPutStrUtf stdout
 -- | same as `putStrUtf` but with newline break at the end
 putStrLnUtf :: DPText -> IO ()
 putStrLnUtf = hPutStrLnUtf stdout
+
+-- | Will print color message if first arg is True
+-- | or if handle is terminal device
+hPrintDPText :: Handle -> Bool -> BL.ByteString -> IO ()
+hPrintDPText handle color text = case color of
+    True -> hPutStrUtf handle dptext
+    False -> do
+        is_term <- hIsTerminalDevice handle
+        if is_term
+            then hPutStrUtf handle dptext
+            else printColors' handle $ stripColors dptext
+  where
+    dptext = parseDPText text
+
+
+printDPText :: Bool -> BL.ByteString -> IO ()
+printDPText = hPrintDPText stdout
