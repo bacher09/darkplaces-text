@@ -20,7 +20,7 @@ import Numeric
 import qualified Data.Text.Lazy as TL
 import System.Console.ANSI
 import qualified Data.Text.IO as TIO
-import System.IO (Handle, stdout, hPutStrLn, hIsTerminalDevice)
+import System.IO (Handle, stdout, hPutStrLn)
 import qualified Data.ByteString.Lazy as BL
 
 
@@ -96,7 +96,7 @@ hPrintDPText :: Handle -> Bool -> BL.ByteString -> IO ()
 hPrintDPText handle color text = case color of
     True -> hPutStrUtf handle dptext
     False -> do
-        is_term <- hIsTerminalDevice handle
+        is_term <- hSupportsANSI handle
         if is_term
             then hPutStrUtf handle dptext
             else hPutStrUtfNoColors handle dptext
