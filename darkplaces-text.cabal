@@ -7,7 +7,7 @@ maintainer:          slava@bacher09.org
 homepage:            https://github.com/bacher09/darkplaces-text
 bug-reports:         https://github.com/bacher09/darkplaces-text/issues
 category:            Game
-build-type:          Simple
+build-type:          Custom
 copyright:           (c) Slava Bacherikov 2015
 cabal-version:       >=1.10
 stability:           alpha
