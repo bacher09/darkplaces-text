@@ -20,14 +20,16 @@ description:
 
 library
   exposed-modules:     DarkPlaces.Text
-  other-modules:       DarkPlaces.Text.Lexer,
+  other-modules:       DarkPlaces.Text.Types,
+                       DarkPlaces.Text.Printable,
+                       DarkPlaces.Text.Lexer,
                        DarkPlaces.Text.Chars,
                        DarkPlaces.Text.Colors
-  -- other-extensions:    
   build-depends:       base >=4.7 && <4.8,
                        bytestring >=0.10 && <0.11,
                        array,
                        text >=1.0,
+                       utf8-string >=0.3,
                        vector >=0.10,
                        ansi-terminal >=0.6
 
@@ -35,6 +37,7 @@ library
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -O2 -funbox-strict-fields -Wall -fno-warn-name-shadowing
+  default-extensions:  FlexibleInstances
 
 source-repository head
   type:                git

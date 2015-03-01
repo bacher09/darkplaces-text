@@ -1,20 +1,10 @@
 {
 {-# OPTIONS_GHC -w #-}
 module DarkPlaces.Text.Lexer (
-    DPTextToken(..),
-    DPText(..),
-    parseDPText,
-    isString,
-    isColor
+    parseDPText
 ) where
+import DarkPlaces.Text.Types
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Lazy.Char8 as BLC
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
-import Data.Text.Encoding
-import qualified Data.Text.Lazy.Encoding as  TLE
-import Data.String
-import Numeric
 }
 
 %wrapper "basic-bytestring"
@@ -29,38 +19,12 @@ words :-
 
     @simple_color      { simpleColor }
     @hex_color         { hexColor }
-    @other             { DPString . decodeUtf8 . BL.toStrict }
+    @other             { DPString }
 
 {
-data DPTextToken = SimpleColor Int
-                 | HexColor Int
-                 | DPString T.Text
-    deriving(Show, Eq)
 
 
-newtype DPText = DPText [DPTextToken]
-    deriving(Show, Eq)
-
-
-simpleColor :: BL.ByteString -> DPTextToken
-simpleColor = SimpleColor . fst . head . readDec . BLC.unpack . BL.drop 1
-
-hexColor :: BL.ByteString -> DPTextToken
-hexColor = HexColor . fst . head . readHex . BLC.unpack . BL.drop 2
-
--- | convert lazy `BL.ByteString` to `DPText`
-parseDPText :: BL.ByteString -> DPText
+-- | convert lazy `BL.ByteString` to `BinaryDPText`
+parseDPText :: BL.ByteString -> BinaryDPText
 parseDPText = DPText . alexScanTokens
-
-isString :: DPTextToken -> Bool
-isString (DPString _) = True
-isString _ = False
-
-isColor :: DPTextToken -> Bool
-isColor (SimpleColor _) = True
-isColor (HexColor _) = True
-isColor _ = False
-
-instance IsString DPText where
-    fromString = parseDPText . TLE.encodeUtf8 . TL.pack
 }
