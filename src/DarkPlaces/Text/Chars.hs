@@ -1,9 +1,8 @@
 module DarkPlaces.Text.Chars where
 import Data.Vector
 import Data.Char
-import qualified Data.Text as T
-import DarkPlaces.Text.Lexer
 import DarkPlaces.Text.Types
+import DarkPlaces.Text.Classes
 
 
 -- from https://github.com/xonotic/darkplaces/blob/master/console.c#L116
@@ -114,27 +113,25 @@ qfont_unicode_table = fromList [
     ]
 
 
-decodeQFont :: Vector Char -> T.Text -> T.Text
-decodeQFont qtable = T.map replace_char
+decodeQFont :: (CharMap a) => Vector Char -> a -> a
+decodeQFont qtable = mapChars replace_char
   where
     replace_char c = if '\xe000' <= c && c <= '\xe0ff'
         then qtable ! (ord c - 0xe000)
         else c
 
-decodeQFontASCII :: T.Text -> T.Text
+
+decodeQFontASCII :: (CharMap a) => a -> a
 decodeQFontASCII = decodeQFont qfont_ascii_table
 
-decodeQFontUTF :: T.Text -> T.Text
+
+decodeQFontUTF :: (CharMap a) => a -> a
 decodeQFontUTF = decodeQFont qfont_unicode_table
 
-decodeDPText :: (T.Text -> T.Text) -> DPText T.Text -> DPText T.Text
-decodeDPText f (DPText t) = DPText $ fmap mfun t
-  where
-    mfun (DPString s) = DPString $ f s
-    mfun x = x
 
-decodeDPTextASCII :: DecodedDPText -> DecodedDPText
-decodeDPTextASCII = decodeDPText decodeQFontASCII
+decodeDPTextASCII :: (CharMap a) => DPText a -> DPText a
+decodeDPTextASCII = mapDPText decodeQFontASCII
 
-decodeDPTextUTF :: DecodedDPText -> DecodedDPText
-decodeDPTextUTF = decodeDPText decodeQFontUTF
+
+decodeDPTextUTF :: (CharMap a) => DPText a -> DPText a
+decodeDPTextUTF = mapDPText decodeQFontUTF
