@@ -1,5 +1,6 @@
 module DarkPlaces.Text.Classes (
-    Printable(..)
+    Printable(..),
+    CharMap(..)
 ) where
 import System.IO (Handle, stdout, hPutStr, hPutStrLn)
 import qualified Data.ByteString.Char8 as BC
@@ -45,3 +46,27 @@ instance Printable T.Text where
 instance Printable TL.Text where
     hPutPrintable = TLIO.hPutStr
     hPutPrintableLn = TLIO.hPutStrLn
+
+
+class CharMap a where
+    mapChars :: (Char -> Char) -> a -> a
+
+
+instance CharMap [Char] where
+    mapChars = map
+
+
+instance CharMap BC.ByteString where
+    mapChars = BC.map
+
+
+instance CharMap BLC.ByteString where
+    mapChars = BLC.map
+
+
+instance CharMap T.Text where
+    mapChars = T.map
+
+
+instance CharMap TL.Text where
+    mapChars = TL.map
