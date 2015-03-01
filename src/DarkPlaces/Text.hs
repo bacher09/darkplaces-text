@@ -4,36 +4,33 @@ import DarkPlaces.Text.Types
 import DarkPlaces.Text.Colors
 import DarkPlaces.Text.Chars
 import qualified Data.Text.Lazy as TL
-import qualified Data.Text.IO as TIO
 import System.IO (Handle, stdout, hPutStrLn)
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.UTF8 as BLU
 import Data.String
 
 
-{--- | Removes colors from `DPText`-}
-{-stripColors :: DPText -> DPText-}
-{-stripColors (DPText t) = DPText $ filter isString t-}
+-- | Removes colors from `DPText a`
+stripColors :: DPText a -> DPText a
+stripColors (DPText t) = DPText $ filter isString t
 
 
-{-minimizeColors :: DPText -> DPText-}
-{-minimizeColors (DPText t) = DPText $ minimize' t (SimpleColor 0)-}
-  {-where-}
-    {-minimize' (x:xs) c-}
-        {-| isColor x && x == c = minimize' xs c-}
-        {-| isColor x = x : minimize' xs x-}
-        {-| otherwise = x : minimize' xs c-}
+minimizeColors :: (Eq a) => DPText a -> DPText a
+minimizeColors (DPText t) = DPText $ minimize' t (SimpleColor 0)
+  where
+    minimize' (x:xs) c
+        | isColor x && x == c = minimize' xs c
+        | isColor x = x : minimize' xs x
+        | otherwise = x : minimize' xs c
 
-    {-minimize' [] _ = []-}
-
-
-{-simplifyColors :: DPText -> DPText-}
-{-simplifyColors (DPText t) =  DPText $ map convert t-}
-  {-where-}
-    {-convert (HexColor h) = SimpleColor (simplifyColor h)-}
-    {-convert x = x-}
+    minimize' [] _ = []
 
 
+simplifyColors :: DPText a -> DPText a
+simplifyColors (DPText t) =  DPText $ map convert t
+  where
+    convert (HexColor h) = SimpleColor (simplifyColor h)
+    convert x = x
 
 
 {-printColors :: Handle -> DPText -> IO ()-}
