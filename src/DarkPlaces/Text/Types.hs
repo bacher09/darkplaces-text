@@ -44,8 +44,8 @@ isColor (HexColor _) = True
 isColor _ = False
 
 
-mapDPText :: DPText a -> (a -> b) -> DPText b
-mapDPText (DPText l) f = DPText $ map fun l
+mapDPText :: (a -> b) -> DPText a -> DPText b
+mapDPText f (DPText l) = DPText $ map fun l
   where
     fun (DPString s) = DPString $ f s
     fun (SimpleColor c) = SimpleColor c
