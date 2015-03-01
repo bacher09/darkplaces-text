@@ -7,6 +7,7 @@ import DarkPlaces.Text.Colors
 import System.Console.ANSI
 import System.IO (Handle)
 import Data.Monoid
+import Data.String
 import Numeric
 
 
@@ -66,3 +67,11 @@ instance Printable a => Printable (DPText a) where
 instance Monoid (DPText a) where
     mempty = DPText []
     mappend (DPText a) (DPText b) = DPText $ a ++ b
+
+
+toText :: (Monoid a, IsString a) => DPText a -> a
+toText (DPText tl) = mconcat $ map repr tl
+  where
+    repr (DPString s) = s
+    repr (SimpleColor c) = fromString $ "^" ++ show c
+    repr (HexColor c) = fromString $ "^x" ++ showHex c ""

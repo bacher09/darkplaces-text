@@ -3,25 +3,12 @@ import DarkPlaces.Text.Lexer
 import DarkPlaces.Text.Types
 import DarkPlaces.Text.Colors
 import DarkPlaces.Text.Chars
-import Numeric
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.IO as TIO
 import System.IO (Handle, stdout, hPutStrLn)
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.UTF8 as BLU
 import Data.String
-
-
-{-class ToText a where-}
-    {-toText :: a -> TL.Text-}
-
-{-instance ToText DPTextToken where-}
-    {-toText (SimpleColor x) = TL.pack $ "^" ++ show x-}
-    {-toText (HexColor x) = TL.pack $ "^x" ++ showHex x ""-}
-    {-toText (DPString x) = TL.fromStrict x-}
-
-{-instance ToText DPText where-}
-    {-toText (DPText x) = TL.concat $ map toText x-}
 
 
 {--- | Removes colors from `DPText`-}
