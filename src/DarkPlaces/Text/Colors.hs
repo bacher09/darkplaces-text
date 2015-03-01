@@ -2,10 +2,12 @@ module DarkPlaces.Text.Colors (
     RGB(..),
     getRGB,
     getColor,
-    simplifyColor
+    simplifyColor,
+    hReset
 ) where
 import Data.Bits
 import System.Console.ANSI
+import System.IO (Handle)
 
 newtype RGB = RGB (Int, Int, Int) deriving(Show, Eq)
 newtype HSV = HSV (Double, Double, Double) deriving(Show, Eq)
@@ -72,3 +74,7 @@ getColor n
     | n == 0 || n == 7 = [Reset]
     | n == 8 || n == 9 = [SetConsoleIntensity BoldIntensity, SetColor Foreground Dull  Black]
     | otherwise = []
+
+
+hReset :: Handle -> IO ()
+hReset h = hSetSGR h [Reset]
