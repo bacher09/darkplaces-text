@@ -1,4 +1,4 @@
-module DarkPlaces.Text.Printable (
+module DarkPlaces.Text.Classes (
     Printable(..)
 ) where
 import System.IO (Handle, stdout, hPutStr, hPutStrLn)

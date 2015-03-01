@@ -2,7 +2,7 @@ module DarkPlaces.Text.Types where
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BLC
 import qualified Data.Text as T
-import DarkPlaces.Text.Printable
+import DarkPlaces.Text.Classes
 import DarkPlaces.Text.Colors
 import System.Console.ANSI
 import System.IO (Handle)

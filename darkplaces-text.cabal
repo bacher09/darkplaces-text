@@ -21,7 +21,7 @@ description:
 library
   exposed-modules:     DarkPlaces.Text
   other-modules:       DarkPlaces.Text.Types,
-                       DarkPlaces.Text.Printable,
+                       DarkPlaces.Text.Classes,
                        DarkPlaces.Text.Lexer,
                        DarkPlaces.Text.Chars,
                        DarkPlaces.Text.Colors
