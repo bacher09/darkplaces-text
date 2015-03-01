@@ -121,6 +121,14 @@ decodeQFont qtable = mapChars replace_char
         else c
 
 
+decodeQFontOld :: (CharMap a) => Vector Char -> a -> a
+decodeQFontOld qtable = mapChars replace_char
+  where
+    replace_char c = if '\0' <= c && c <= '\255'
+        then qtable ! (ord c)
+        else c
+
+
 decodeQFontASCII :: (CharMap a) => a -> a
 decodeQFontASCII = decodeQFont qfont_ascii_table
 
