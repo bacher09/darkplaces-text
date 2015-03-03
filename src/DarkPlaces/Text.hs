@@ -3,7 +3,8 @@ import DarkPlaces.Text.Lexer
 import DarkPlaces.Text.Types
 import DarkPlaces.Text.Colors
 import DarkPlaces.Text.Chars
-import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Encoding as TE
+import qualified Data.Text.Encoding.Error as TEE
 import System.IO (Handle, stdout, hPutStrLn)
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.UTF8 as BLU
@@ -75,3 +76,13 @@ simplifyColors (DPText t) =  DPText $ map convert t
 
 instance IsString (DPText BL.ByteString) where
     fromString = parseDPText . BLU.fromString
+
+
+decodeDPText :: DecodeType -> BinaryDPText -> DecodedDPText
+decodeDPText dec_type = mapDPText (decodeFun dec_type . BL.toStrict)
+  where
+    decodeFun Utf8Lenient = TE.decodeUtf8With TEE.lenientDecode
+    decodeFun Utf8Ignore = TE.decodeUtf8With TEE.ignore
+    decodeFun Utf8Strict = TE.decodeUtf8With TEE.strictDecode
+    decodeFun NexuizDecode = TE.decodeLatin1
+    decodeFun (CustomDecode f) = f

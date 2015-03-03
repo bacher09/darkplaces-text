@@ -124,9 +124,15 @@ decodeQFont qtable = mapChars replace_char
 decodeQFontOld :: (CharMap a) => Vector Char -> a -> a
 decodeQFontOld qtable = mapChars replace_char
   where
-    replace_char c = if '\0' <= c && c <= '\255'
+    replace_char c = if '\0' <= c && c <= '\255' && c /= '\n'
         then qtable ! (ord c)
         else c
+
+
+-- also 42 and 96 are mappend in nexuiz
+isOldGlyph :: Char -> Bool
+isOldGlyph c = ('\0' <= c && c <= '\31' && c /= '\n') ||
+               ('\127' <= c && c <= '\255')
 
 
 decodeQFontASCII :: (CharMap a) => a -> a

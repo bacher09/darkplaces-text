@@ -1,4 +1,5 @@
 module DarkPlaces.Text.Types where
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BLC
 import qualified Data.Text as T
@@ -23,6 +24,13 @@ newtype DPText a = DPText [DPTextToken a]
 
 type BinaryDPText = DPText BL.ByteString
 type DecodedDPText = DPText T.Text
+
+
+data DecodeType = Utf8Lenient
+                | Utf8Ignore
+                | Utf8Strict
+                | NexuizDecode
+                | CustomDecode (B.ByteString -> T.Text)
 
 
 simpleColor :: BL.ByteString -> DPTextToken a
