@@ -3,11 +3,13 @@ import DarkPlaces.Text.Lexer
 import DarkPlaces.Text.Types
 import DarkPlaces.Text.Colors
 import DarkPlaces.Text.Chars
+import DarkPlaces.Text.Classes
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
 import System.IO (Handle, stdout, hPutStrLn)
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.UTF8 as BLU
+import System.Console.ANSI (hSupportsANSI)
 import Data.String
 
 
@@ -34,45 +36,46 @@ simplifyColors (DPText t) =  DPText $ map convert t
     convert x = x
 
 
-{-printColors :: Handle -> DPText -> IO ()-}
-{-printColors h = printColors' h . minimizeColors . simplifyColors-}
+printColors :: (Printable a, Eq a) => Handle -> DPText a -> IO ()
+printColors h = hPutPrintable h . minimizeColors . simplifyColors
 
 
-{-hPutStrUtf :: Handle -> DPText -> IO ()-}
-{-hPutStrUtf h t = printColors h (decodeDPTextUTF t) >> hSetSGR h [Reset]-}
+hPutStrUtf :: (Printable a, Eq a, CharMap a) => Handle -> DPText a -> IO ()
+hPutStrUtf h t = printColors h (decodeDPTextUTF t) >> hReset h
 
 
-{-hPutStrUtfNoColors :: Handle -> DPText -> IO ()-}
-{-hPutStrUtfNoColors h t = printColors' h $ decodeDPTextUTF $ stripColors t-}
+hPutStrUtfNoColors :: (Printable a, Eq a, CharMap a) => Handle -> DPText a -> IO ()
+hPutStrUtfNoColors h t = hPutPrintable h $ decodeDPTextUTF $ stripColors t
 
 
-{-hPutStrLnUtf :: Handle -> DPText -> IO ()-}
-{-hPutStrLnUtf h t = hPutStrUtf h t >> hPutStrLn h ""-}
+hPutStrLnUtf :: (Printable a, Eq a, CharMap a) => Handle -> DPText a -> IO ()
+hPutStrLnUtf h t = hPutStrUtf h t >> hPutStrLn h ""
 
-{--- | prints `DPText` to console using utf8 encoding-}
-{-putStrUtf :: DPText -> IO ()-}
-{-putStrUtf = hPutStrUtf stdout-}
+-- | prints `DPText` to console using utf8 encoding
+putStrUtf :: (Printable a, Eq a, CharMap a) => DPText a -> IO ()
+putStrUtf = hPutStrUtf stdout
 
-{--- | same as `putStrUtf` but with newline break at the end-}
-{-putStrLnUtf :: DPText -> IO ()-}
-{-putStrLnUtf = hPutStrLnUtf stdout-}
+-- | same as `putStrUtf` but with newline break at the end
+putStrLnUtf :: (Printable a, Eq a, CharMap a) => DPText a -> IO ()
+putStrLnUtf = hPutStrLnUtf stdout
 
-{--- | Will print color message if first arg is True-}
-{--- | or if handle is terminal device-}
-{-hPrintDPText :: Handle -> Bool -> BL.ByteString -> IO ()-}
-{-hPrintDPText handle color text = case color of-}
-    {-True -> hPutStrUtf handle dptext-}
-    {-False -> do-}
-        {-is_term <- hSupportsANSI handle-}
-        {-if is_term-}
-            {-then hPutStrUtf handle dptext-}
-            {-else hPutStrUtfNoColors handle dptext-}
-  {-where-}
-    {-dptext = parseDPText text-}
+-- | Will print color message if first arg is True
+-- | or if handle is terminal device
+hPrintDPText :: Handle -> Bool -> BL.ByteString -> IO ()
+hPrintDPText handle color text = case color of
+    True -> hPutStrUtf handle dptext
+    False -> do
+        is_term <- hSupportsANSI handle
+        if is_term
+            then hPutStrUtf handle dptext
+            else hPutStrUtfNoColors handle dptext
+  where
+    dptext = decodeDPText Utf8Lenient $ parseDPText text
 
 
-{-printDPText :: Bool -> BL.ByteString -> IO ()-}
-{-printDPText = hPrintDPText stdout-}
+printDPText :: Bool -> BL.ByteString -> IO ()
+printDPText = hPrintDPText stdout
+
 
 instance IsString (DPText BL.ByteString) where
     fromString = parseDPText . BLU.fromString
