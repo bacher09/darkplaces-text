@@ -11,12 +11,14 @@ import qualified Data.ByteString.Lazy as BL
 
 $num = [0-9]
 $hexnum = [$num A-Fa-f]
+$newline = \n
 @simple_color = \^ $num
 @hex_color = \^x $hexnum{3}
 @other = [^\^]+ | [. $white]
 
 words :-
 
+    $newline           { const DPNewline }
     @simple_color      { simpleColor }
     @hex_color         { hexColor }
     @other             { DPString }

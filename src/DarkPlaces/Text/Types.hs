@@ -6,7 +6,7 @@ import qualified Data.Text as T
 import DarkPlaces.Text.Classes
 import DarkPlaces.Text.Colors
 import System.Console.ANSI
-import System.IO (Handle)
+import System.IO (Handle, hPutChar)
 import Data.Monoid
 import Data.String
 import Numeric
@@ -14,6 +14,7 @@ import Numeric
 
 data DPTextToken a = SimpleColor Int
                    | HexColor Int
+                   | DPNewline
                    | DPString a
     deriving(Show, Eq)
 
@@ -56,16 +57,22 @@ mapDPText :: (a -> b) -> DPText a -> DPText b
 mapDPText f (DPText l) = DPText $ map fun l
   where
     fun (DPString s) = DPString $ f s
+    fun DPNewline = DPNewline
     fun (SimpleColor c) = SimpleColor c
     fun (HexColor c) = HexColor c
 
 
-putDPText :: (Printable a) => Handle -> DPText a -> IO ()
-putDPText h (DPText t) = mapM_ print t
+putDPText' :: (Printable a) => (Handle -> IO ()) -> Handle -> DPText a -> IO ()
+putDPText' nf h (DPText t) = mapM_ print t
   where
     print (SimpleColor c) = hSetSGR h (getColor c)
     print (DPString s) = hPutPrintable h s
+    print DPNewline = nf h
     print _ = return ()
+
+
+putDPText :: (Printable a) => Handle -> DPText a -> IO ()
+putDPText = putDPText' (\h -> hPutChar h '\n' >> hReset h)
 
 
 instance Printable a => Printable (DPText a) where
@@ -80,6 +87,7 @@ instance Monoid (DPText a) where
 toText :: (Monoid a, IsString a) => DPText a -> a
 toText (DPText tl) = mconcat $ map repr tl
   where
+    repr DPNewline = fromString "\n"
     repr (DPString s) = s
     repr (SimpleColor c) = fromString $ "^" ++ show c
     repr (HexColor c) = fromString $ "^x" ++ showHex c ""
