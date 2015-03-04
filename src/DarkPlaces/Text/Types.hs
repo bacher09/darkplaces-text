@@ -34,6 +34,19 @@ data DecodeType = Utf8Lenient
                 | CustomDecode (B.ByteString -> T.Text)
 
 
+data DPStreamState a = DPStreamState {
+    streamLeft  :: a,
+    streamColor :: DPTextToken a
+} deriving (Show, Eq)
+
+
+type BinStreamState = DPStreamState BL.ByteString
+
+
+defaultStreamState :: BinStreamState
+defaultStreamState = DPStreamState BL.empty (SimpleColor 0)
+
+
 simpleColor :: BL.ByteString -> DPTextToken a
 simpleColor = SimpleColor . fst . head . readDec . BLC.unpack . BL.drop 1
 
@@ -51,6 +64,15 @@ isColor :: DPTextToken a -> Bool
 isColor (SimpleColor _) = True
 isColor (HexColor _) = True
 isColor _ = False
+
+
+isNewline :: DPTextToken a -> Bool
+isNewline DPNewline = True
+isNewline _ = False
+
+
+isTextData :: DPTextToken a -> Bool
+isTextData = not . isColor
 
 
 mapDPText :: (a -> b) -> DPText a -> DPText b
