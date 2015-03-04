@@ -75,13 +75,21 @@ isTextData :: DPTextToken a -> Bool
 isTextData = not . isColor
 
 
+mapToken :: (a -> b) -> DPTextToken a -> DPTextToken b
+mapToken f (DPString s) = DPString $ f s
+mapToken _ DPNewline = DPNewline
+mapToken _ (SimpleColor c) = SimpleColor c
+mapToken _ (HexColor c) = HexColor c
+
+
 mapDPText :: (a -> b) -> DPText a -> DPText b
-mapDPText f (DPText l) = DPText $ map fun l
+mapDPText f (DPText l) = DPText $ map (mapToken f) l
+
+
+mapDPTextStream :: (a -> b) -> DPStreamState a -> DPStreamState b
+mapDPTextStream f st = DPStreamState (f left) (mapToken f color)
   where
-    fun (DPString s) = DPString $ f s
-    fun DPNewline = DPNewline
-    fun (SimpleColor c) = SimpleColor c
-    fun (HexColor c) = HexColor c
+    (DPStreamState left color) = st
 
 
 putDPText' :: (Printable a) => (Handle -> IO ()) -> Handle -> DPText a -> IO ()

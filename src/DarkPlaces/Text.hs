@@ -1,9 +1,26 @@
-module DarkPlaces.Text where
+module DarkPlaces.Text (
+    DPText(..),
+    DPTextToken(..),
+    DPStreamState(..),
+    BinaryDPText,
+    DecodedDPText,
+    defaultStreamState,
+    stripColors,
+    minimizeColors,
+    simplifyColors,
+    hPrintDPText,
+    printDPText,
+    hPrintStreamDPText,
+    printStreamDPText,
+    hStreamEnd,
+    streamEnd
+) where
 import DarkPlaces.Text.Lexer
 import DarkPlaces.Text.Types
 import DarkPlaces.Text.Colors
 import DarkPlaces.Text.Chars
 import DarkPlaces.Text.Classes
+import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Encoding.Error as TEE
 import System.IO (Handle, stdout, hPutStrLn)
@@ -64,6 +81,10 @@ printColors :: (Printable a, Eq a) => Handle -> DPText a -> IO ()
 printColors h = hPutPrintable h . minimizeColors . simplifyColors
 
 
+printStreamColors :: (Printable a, Eq a) => Handle -> DPStreamState a -> DPText a -> IO ()
+printStreamColors h st = hPutPrintable h . minimizeColors' (streamColor st) . simplifyColors
+
+
 hPutStrUtf :: (Printable a, Eq a, CharMap a) => Handle -> DPText a -> IO ()
 hPutStrUtf h t = printColors h (decodeDPTextUTF t) >> hReset h
 
@@ -87,18 +108,48 @@ putStrLnUtf = hPutStrLnUtf stdout
 -- | or if handle is terminal device
 hPrintDPText :: Handle -> Bool -> BL.ByteString -> IO ()
 hPrintDPText handle color text = case color of
-    True -> hPutStrUtf handle dptext
+    True -> colorPrint
     False -> do
         is_term <- hSupportsANSI handle
         if is_term
-            then hPutStrUtf handle dptext
+            then colorPrint
             else hPutStrUtfNoColors handle dptext
   where
     dptext = decodeDPText Utf8Lenient $ parseDPText text
+    colorPrint = hPutStrUtf handle dptext
 
 
 printDPText :: Bool -> BL.ByteString -> IO ()
 printDPText = hPrintDPText stdout
+
+
+hPrintStreamDPText :: Handle -> Bool -> BinStreamState -> BL.ByteString -> IO BinStreamState
+hPrintStreamDPText h color st bin = case color of
+    True -> colorPrint
+    False -> do
+        is_term <- hSupportsANSI h
+        if is_term
+            then colorPrint
+            else hPutStrUtfNoColors h dptext >> return st'
+  where
+    (bintext, st') = parseStreamDPText st bin
+    dptext = decodeDPText Utf8Lenient bintext
+    st_dec = mapDPTextStream (const T.empty) st
+    colorPrint = printStreamColors h st_dec dptext >> return st'
+
+
+printStreamDPText :: Bool -> BinStreamState -> BL.ByteString -> IO BinStreamState
+printStreamDPText = hPrintStreamDPText stdout
+
+
+hStreamEnd :: Handle -> Bool -> BinStreamState -> IO ()
+hStreamEnd h color st = if color && streamColor st /= (SimpleColor 0)
+    then hReset h
+    else return ()
+
+
+streamEnd :: Bool -> BinStreamState -> IO ()
+streamEnd = hStreamEnd stdout
 
 
 instance IsString (DPText BL.ByteString) where
