@@ -13,7 +13,9 @@ module DarkPlaces.Text (
     hPrintStreamDPText,
     printStreamDPText,
     hStreamEnd,
-    streamEnd
+    streamEnd,
+    hSupportColors,
+    supportColors
 ) where
 import DarkPlaces.Text.Lexer
 import DarkPlaces.Text.Types
@@ -107,16 +109,11 @@ putStrLnUtf = hPutStrLnUtf stdout
 -- | Will print color message if first arg is True
 -- | or if handle is terminal device
 hPrintDPText :: Handle -> Bool -> BL.ByteString -> IO ()
-hPrintDPText handle color text = case color of
-    True -> colorPrint
-    False -> do
-        is_term <- hSupportsANSI handle
-        if is_term
-            then colorPrint
-            else hPutStrUtfNoColors handle dptext
+hPrintDPText handle color text = if color
+    then hPutStrUtf handle dptext
+    else hPutStrUtfNoColors handle dptext
   where
     dptext = decodeDPText Utf8Lenient $ parseDPText text
-    colorPrint = hPutStrUtf handle dptext
 
 
 printDPText :: Bool -> BL.ByteString -> IO ()
@@ -124,18 +121,13 @@ printDPText = hPrintDPText stdout
 
 
 hPrintStreamDPText :: Handle -> Bool -> BinStreamState -> BL.ByteString -> IO BinStreamState
-hPrintStreamDPText h color st bin = case color of
-    True -> colorPrint
-    False -> do
-        is_term <- hSupportsANSI h
-        if is_term
-            then colorPrint
-            else hPutStrUtfNoColors h dptext >> return st'
+hPrintStreamDPText h color st bin = (if color
+    then printStreamColors h st_dec dptext
+    else hPutStrUtfNoColors h dptext) >> return st'
   where
     (bintext, st') = parseStreamDPText st bin
     dptext = decodeDPText Utf8Lenient bintext
     st_dec = mapDPTextStream (const T.empty) st
-    colorPrint = printStreamColors h st_dec dptext >> return st'
 
 
 printStreamDPText :: Bool -> BinStreamState -> BL.ByteString -> IO BinStreamState
@@ -164,3 +156,11 @@ decodeDPText dec_type = mapDPText (decodeFun dec_type . BL.toStrict)
     decodeFun Utf8Strict = TE.decodeUtf8With TEE.strictDecode
     decodeFun NexuizDecode = TE.decodeLatin1
     decodeFun (CustomDecode f) = f
+
+
+hSupportColors :: Handle -> IO Bool
+hSupportColors = hSupportsANSI
+
+
+supportColors :: IO Bool
+supportColors = hSupportColors stdout
