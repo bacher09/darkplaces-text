@@ -4,6 +4,7 @@ module DarkPlaces.Text (
     DPStreamState(..),
     BinaryDPText,
     DecodedDPText,
+    parseDPText,
     defaultStreamState,
     stripColors,
     minimizeColors,
