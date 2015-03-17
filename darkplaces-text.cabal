@@ -19,12 +19,14 @@ description:
   that are unique for darkplaces fonts.
 
 library
-  exposed-modules:     DarkPlaces.Text
-  other-modules:       DarkPlaces.Text.Types,
-                       DarkPlaces.Text.Classes,
+  exposed-modules:     DarkPlaces.Text,
+                       DarkPlaces.Text.Types
+
+  other-modules:       DarkPlaces.Text.Classes,
                        DarkPlaces.Text.Lexer,
                        DarkPlaces.Text.Chars,
                        DarkPlaces.Text.Colors
+
   build-depends:       base >=4.7 && <4.8,
                        bytestring >=0.10 && <0.11,
                        array,
@@ -45,7 +47,9 @@ test-suite tests
   hs-source-dirs:      tests
   main-is:             Spec.hs
   build-depends:       base >=4.7 && <4.8,
+                       bytestring >=0.10 && <0.11,
                        darkplaces-text,
+                       QuickCheck >= 2.5,
                        hspec
   default-extensions:  OverloadedStrings
 

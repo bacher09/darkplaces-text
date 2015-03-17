@@ -121,3 +121,11 @@ toText (DPText tl) = mconcat $ map repr tl
     repr (DPString s) = s
     repr (SimpleColor c) = fromString $ "^" ++ show c
     repr (HexColor c) = fromString $ "^x" ++ showHex c ""
+
+
+optimizeDPText :: (Monoid a) => DPText a -> DPText a
+optimizeDPText (DPText s) = DPText $ go s
+  where
+    go (DPString f : DPString s : xs) = DPString (f <> s) : go xs
+    go (x:xs) = x : go xs
+    go [] = []
