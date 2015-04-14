@@ -109,7 +109,7 @@ hPutDPText h t = printColors h t >> hReset h
 
 
 hPutDPTextNoColors :: (Printable a, Eq a) => Handle -> DPText a -> IO ()
-hPutDPTextNoColors h t = hPutPrintable h $ stripColors t
+hPutDPTextNoColors h t = putDPTextNoReset h $ stripColors t
 
 
 hPutDPTextLn :: (Printable a, Eq a) => Handle -> DPText a -> IO ()

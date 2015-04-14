@@ -107,6 +107,10 @@ putDPText'' :: (Printable a) => Handle -> DPText a -> IO ()
 putDPText'' = putDPText' (\h -> hPutChar h '\n' >> hReset h)
 
 
+putDPTextNoReset :: (Printable a) => Handle -> DPText a -> IO ()
+putDPTextNoReset = putDPText' (flip hPutChar '\n')
+
+
 instance Printable a => Printable (DPText a) where
     hPutPrintable = putDPText''
 
