@@ -135,17 +135,19 @@ isOldGlyph c = ('\0' <= c && c <= '\31' && c /= '\n') ||
                ('\127' <= c && c <= '\255')
 
 
-decodeQFontASCII :: (CharMap a) => a -> a
-decodeQFontASCII = decodeQFont qfont_ascii_table
+decodeQFontASCII :: (CharMap a) => Bool -> a -> a
+decodeQFontASCII True = decodeQFont qfont_ascii_table
+decodeQFontASCII False = decodeQFontOld qfont_ascii_table
 
 
-decodeQFontUTF :: (CharMap a) => a -> a
-decodeQFontUTF = decodeQFont qfont_unicode_table
+decodeQFontUTF :: (CharMap a) => Bool -> a -> a
+decodeQFontUTF True = decodeQFont qfont_unicode_table
+decodeQFontUTF False = decodeQFontOld qfont_unicode_table
 
 
-decodeDPTextASCII :: (CharMap a) => DPText a -> DPText a
-decodeDPTextASCII = mapDPText decodeQFontASCII
+decodeDPTextASCII :: (CharMap a) => Bool -> DPText a -> DPText a
+decodeDPTextASCII is_new = mapDPText $ decodeQFontASCII is_new
 
 
-decodeDPTextUTF :: (CharMap a) => DPText a -> DPText a
-decodeDPTextUTF = mapDPText decodeQFontUTF
+decodeDPTextUTF :: (CharMap a) => Bool -> DPText a -> DPText a
+decodeDPTextUTF is_new = mapDPText $ decodeQFontUTF is_new

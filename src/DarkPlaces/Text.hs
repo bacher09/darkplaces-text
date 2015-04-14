@@ -2,10 +2,12 @@ module DarkPlaces.Text (
     DPText(..),
     DPTextToken(..),
     DPStreamState(..),
+    PrintStreamArgs(..),
     BinaryDPText,
     DecodedDPText,
     parseDPText,
     defaultStreamState,
+    defaultPrintStreamArgs,
     stripColors,
     minimizeColors,
     simplifyColors,
@@ -15,6 +17,8 @@ module DarkPlaces.Text (
     printStreamDPText,
     hStreamEnd,
     streamEnd,
+    toUTF,
+    toASCII,
     hSupportColors,
     supportColors
 ) where
@@ -32,6 +36,17 @@ import qualified Data.ByteString.Lazy.UTF8 as BLU
 import System.Console.ANSI (hSupportsANSI)
 import Data.String
 import Data.Monoid
+
+
+data PrintStreamArgs = PrintStreamArgs {
+    withColor   :: Bool,
+    streamState :: BinStreamState,
+    decodeFun   :: DecodeFun BL.ByteString T.Text
+}
+
+
+defaultPrintStreamArgs :: PrintStreamArgs
+defaultPrintStreamArgs = PrintStreamArgs True defaultStreamState (toUTF Utf8Lenient)
 
 
 -- | Removes colors from `DPText a`
@@ -88,50 +103,50 @@ printStreamColors :: (Printable a, Eq a) => Handle -> DPStreamState a -> DPText 
 printStreamColors h st = hPutPrintable h . minimizeColors' (streamColor st) . simplifyColors
 
 
-hPutStrUtf :: (Printable a, Eq a, CharMap a) => Handle -> DPText a -> IO ()
-hPutStrUtf h t = printColors h (decodeDPTextUTF t) >> hReset h
+hPutDPText :: (Printable a, Eq a) => Handle -> DPText a -> IO ()
+hPutDPText h t = printColors h t >> hReset h
 
 
-hPutStrUtfNoColors :: (Printable a, Eq a, CharMap a) => Handle -> DPText a -> IO ()
-hPutStrUtfNoColors h t = hPutPrintable h $ decodeDPTextUTF $ stripColors t
+hPutDPTextNoColors :: (Printable a, Eq a) => Handle -> DPText a -> IO ()
+hPutDPTextNoColors h t = hPutPrintable h $ stripColors t
 
 
-hPutStrLnUtf :: (Printable a, Eq a, CharMap a) => Handle -> DPText a -> IO ()
-hPutStrLnUtf h t = hPutStrUtf h t >> hPutStrLn h ""
+hPutDPTextLn :: (Printable a, Eq a) => Handle -> DPText a -> IO ()
+hPutDPTextLn h t = hPutDPText h t >> hPutStrLn h ""
 
 -- | prints `DPText` to console using utf8 encoding
-putStrUtf :: (Printable a, Eq a, CharMap a) => DPText a -> IO ()
-putStrUtf = hPutStrUtf stdout
+putDPText :: (Printable a, Eq a) => DPText a -> IO ()
+putDPText = hPutDPText stdout
 
 -- | same as `putStrUtf` but with newline break at the end
-putStrLnUtf :: (Printable a, Eq a, CharMap a) => DPText a -> IO ()
-putStrLnUtf = hPutStrLnUtf stdout
+putDPTextLn :: (Printable a, Eq a) => DPText a -> IO ()
+putDPTextLn = hPutDPTextLn stdout
 
 -- | Will print color message if first arg is True
 -- | or if handle is terminal device
-hPrintDPText :: Handle -> Bool -> BL.ByteString -> IO ()
-hPrintDPText handle color text = if color
-    then hPutStrUtf handle dptext
-    else hPutStrUtfNoColors handle dptext
+hPrintDPText ::(Printable a, Eq a) => Handle -> DecodeFun BL.ByteString a -> Bool -> BL.ByteString -> IO ()
+hPrintDPText handle fun color text = if color
+    then hPutDPText handle dptext
+    else hPutDPTextNoColors handle dptext
   where
-    dptext = decodeDPText Utf8Lenient $ parseDPText text
+    dptext = fun $ parseDPText text
 
 
-printDPText :: Bool -> BL.ByteString -> IO ()
+printDPText :: (Printable a, Eq a) => DecodeFun BL.ByteString a -> Bool -> BL.ByteString -> IO ()
 printDPText = hPrintDPText stdout
 
 
-hPrintStreamDPText :: Handle -> Bool -> BinStreamState -> BL.ByteString -> IO BinStreamState
-hPrintStreamDPText h color st bin = (if color
+hPrintStreamDPText :: Handle -> PrintStreamArgs -> BL.ByteString -> IO BinStreamState
+hPrintStreamDPText h (PrintStreamArgs color st fun) bin = (if color
     then printStreamColors h st_dec dptext
-    else hPutStrUtfNoColors h dptext) >> return st'
+    else hPutDPTextNoColors h dptext) >> return st'
   where
     (bintext, st') = parseStreamDPText st bin
-    dptext = decodeDPText Utf8Lenient bintext
+    dptext = fun bintext
     st_dec = mapDPTextStream (const T.empty) st
 
 
-printStreamDPText :: Bool -> BinStreamState -> BL.ByteString -> IO BinStreamState
+printStreamDPText :: PrintStreamArgs -> BL.ByteString -> IO BinStreamState
 printStreamDPText = hPrintStreamDPText stdout
 
 
@@ -149,14 +164,25 @@ instance IsString (DPText BL.ByteString) where
     fromString = parseDPText . BLU.fromString
 
 
-decodeDPText :: DecodeType -> BinaryDPText -> DecodedDPText
-decodeDPText dec_type = mapDPText (decodeFun dec_type . BL.toStrict)
+toDecodedDPText :: DecodeType -> BinaryDPText -> DecodedDPText
+toDecodedDPText dec_type = mapDPText (decodeFun dec_type . BL.toStrict)
   where
     decodeFun Utf8Lenient = TE.decodeUtf8With TEE.lenientDecode
     decodeFun Utf8Ignore = TE.decodeUtf8With TEE.ignore
     decodeFun Utf8Strict = TE.decodeUtf8With TEE.strictDecode
     decodeFun NexuizDecode = TE.decodeLatin1
-    decodeFun (CustomDecode f) = f
+
+
+toUTF :: DecodeType -> BinaryDPText -> DecodedDPText
+toUTF dec_type bin_text = decodeDPTextUTF (dec_type == NexuizDecode) dec_text
+  where
+    dec_text = toDecodedDPText dec_type bin_text
+
+
+toASCII :: DecodeType -> BinaryDPText -> DecodedDPText
+toASCII dec_type bin_text = decodeDPTextASCII (dec_type == NexuizDecode) dec_text
+  where
+    dec_text = toDecodedDPText dec_type bin_text
 
 
 hSupportColors :: Handle -> IO Bool

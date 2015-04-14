@@ -1,5 +1,4 @@
 module DarkPlaces.Text.Types where
-import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BLC
 import qualified Data.Text as T
@@ -31,7 +30,10 @@ data DecodeType = Utf8Lenient
                 | Utf8Ignore
                 | Utf8Strict
                 | NexuizDecode
-                | CustomDecode (B.ByteString -> T.Text)
+    deriving(Eq)
+
+
+type DecodeFun a b = DPText a -> DPText b
 
 
 data DPStreamState a = DPStreamState {
@@ -101,12 +103,12 @@ putDPText' nf h (DPText t) = mapM_ print t
     print _ = return ()
 
 
-putDPText :: (Printable a) => Handle -> DPText a -> IO ()
-putDPText = putDPText' (\h -> hPutChar h '\n' >> hReset h)
+putDPText'' :: (Printable a) => Handle -> DPText a -> IO ()
+putDPText'' = putDPText' (\h -> hPutChar h '\n' >> hReset h)
 
 
 instance Printable a => Printable (DPText a) where
-    hPutPrintable = putDPText
+    hPutPrintable = putDPText''
 
 
 instance Monoid (DPText a) where
