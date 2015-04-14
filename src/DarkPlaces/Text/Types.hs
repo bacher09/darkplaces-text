@@ -30,7 +30,7 @@ data DecodeType = Utf8Lenient
                 | Utf8Ignore
                 | Utf8Strict
                 | NexuizDecode
-    deriving(Eq)
+    deriving(Show, Read, Eq, Ord, Enum, Bounded)
 
 
 type DecodeFun a b = DPText a -> DPText b

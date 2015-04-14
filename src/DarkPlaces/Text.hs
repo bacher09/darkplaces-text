@@ -1,6 +1,7 @@
 module DarkPlaces.Text (
     DPText(..),
     DPTextToken(..),
+    DecodeType(..),
     DPStreamState(..),
     PrintStreamArgs(..),
     BinaryDPText,
