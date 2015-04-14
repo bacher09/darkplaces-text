@@ -174,13 +174,13 @@ toDecodedDPText dec_type = mapDPText (decodeFun dec_type . BL.toStrict)
 
 
 toUTF :: DecodeType -> BinaryDPText -> DecodedDPText
-toUTF dec_type bin_text = decodeDPTextUTF (dec_type == NexuizDecode) dec_text
+toUTF dec_type bin_text = decodeDPTextUTF (dec_type /= NexuizDecode) dec_text
   where
     dec_text = toDecodedDPText dec_type bin_text
 
 
 toASCII :: DecodeType -> BinaryDPText -> DecodedDPText
-toASCII dec_type bin_text = decodeDPTextASCII (dec_type == NexuizDecode) dec_text
+toASCII dec_type bin_text = decodeDPTextASCII (dec_type /= NexuizDecode) dec_text
   where
     dec_text = toDecodedDPText dec_type bin_text
 
