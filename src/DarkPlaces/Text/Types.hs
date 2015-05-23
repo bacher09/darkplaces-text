@@ -7,6 +7,7 @@ import DarkPlaces.Text.Colors
 import System.Console.ANSI
 import System.IO (Handle, hPutChar)
 import Data.Monoid
+import Text.Printf
 import Data.String
 import Numeric
 
@@ -126,7 +127,7 @@ toText (DPText tl) = mconcat $ map repr tl
     repr DPNewline = fromString "\n"
     repr (DPString s) = s
     repr (SimpleColor c) = fromString $ "^" ++ show c
-    repr (HexColor c) = fromString $ "^x" ++ showHex c ""
+    repr (HexColor c) = fromString $ printf "^x%03X" c
 
 
 optimizeDPText :: (Monoid a) => DPText a -> DPText a

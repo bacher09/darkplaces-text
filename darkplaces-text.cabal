@@ -54,7 +54,7 @@ test-suite tests
                        QuickCheck >= 2.5,
                        hspec
 
-  default-extensions:  OverloadedStrings
+  default-extensions:  OverloadedStrings, FlexibleInstances
 
 source-repository head
   type:                git
