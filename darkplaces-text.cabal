@@ -55,4 +55,4 @@ test-suite tests
 
 source-repository head
   type:                git
-  location:            https://github.com/bacher09/darkplaces-text
+  location:            https://github.com/bacher09/darkplaces-text.git

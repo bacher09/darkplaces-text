@@ -22,7 +22,11 @@ module DarkPlaces.Text (
     toUTF,
     toASCII,
     hSupportColors,
-    supportColors
+    supportColors,
+    hPutDPText,
+    hPutDPTextLn,
+    putDPText,
+    putDPTextLn
 ) where
 import DarkPlaces.Text.Lexer
 import DarkPlaces.Text.Types
