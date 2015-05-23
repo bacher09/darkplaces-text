@@ -1,5 +1,5 @@
 name:                darkplaces-text
-version:             0.2
+version:             0.2.1
 license:             GPL-2
 license-file:        LICENSE
 author:              Slava Bacherikov
@@ -54,7 +54,7 @@ test-suite tests
                        QuickCheck >= 2.5,
                        hspec
 
-  default-extensions:  OverloadedStrings
+  default-extensions:  OverloadedStrings, FlexibleInstances
 
 source-repository head
   type:                git

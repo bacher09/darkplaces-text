@@ -16,18 +16,26 @@ instance Arbitrary BL.ByteString where
     arbitrary = BL.pack <$> arbitrary
 
 
-instance (Arbitrary a) => Arbitrary (DPTextToken a) where
+instance Arbitrary (DPTextToken BL.ByteString) where
     arbitrary = do
         t <- choose (0, 3) :: Gen Int
         case t of
             0 -> SimpleColor <$> choose (0, 9)
             1 -> HexColor <$> choose (0, 0xFFF)
-            2 -> DPString <$> arbitrary
+            2 -> DPString <$> arWithNoTockens
             3 -> return DPNewline
 
 
-instance (Arbitrary a) => Arbitrary (DPText a) where
+instance Arbitrary (DPText BL.ByteString) where
     arbitrary = DPText <$> arbitrary
+
+
+arWithNoTockens :: Gen BL.ByteString
+arWithNoTockens = do
+    res <- arbitrary
+    case parseDPText res of
+        DPText [DPString s] -> return s
+        _                   -> arWithNoTockens
 
 
 spec :: Spec
