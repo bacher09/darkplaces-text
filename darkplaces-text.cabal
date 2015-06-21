@@ -7,7 +7,7 @@ maintainer:          slava@bacher09.org
 homepage:            https://github.com/bacher09/darkplaces-text
 bug-reports:         https://github.com/bacher09/darkplaces-text/issues
 category:            Game
-build-type:          Custom
+build-type:          Simple
 copyright:           (c) Slava Bacherikov 2015
 cabal-version:       >=1.10
 stability:           alpha
@@ -20,8 +20,7 @@ description:
 
 library
   exposed-modules:     DarkPlaces.Text,
-                       DarkPlaces.Text.Types,
-                       DarkPlaces.Text.AttoLexer
+                       DarkPlaces.Text.Types
 
   other-modules:       DarkPlaces.Text.Classes,
                        DarkPlaces.Text.Lexer,
@@ -35,9 +34,10 @@ library
                        text >=1.0,
                        utf8-string >=0.3,
                        vector >=0.10,
-                       ansi-terminal >=0.6
+                       ansi-terminal >=0.6,
+                       conduit >= 1.1 && < 1.3,
+                       conduit-extra
 
-  build-tools:         alex
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -O2 -funbox-strict-fields -Wall -fno-warn-name-shadowing
