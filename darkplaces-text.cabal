@@ -41,7 +41,6 @@ library
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -O2 -funbox-strict-fields -Wall -fno-warn-name-shadowing
-  default-extensions:  FlexibleInstances
 
 test-suite tests
   default-language:    Haskell2010

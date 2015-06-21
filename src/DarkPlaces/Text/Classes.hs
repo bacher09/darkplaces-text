@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module DarkPlaces.Text.Classes (
     Printable(..),
     CharMap(..)
