@@ -3,6 +3,10 @@ module DarkPlaces.Text (
     -- types
     DPTextToken(..),
     DecodeType(..),
+    -- type synonyms
+    DPTokenWithRange,
+    DPTextOutput,
+    DPTextFilter,
     -- functions
     conduitDPText,
     parseDPText,
@@ -49,6 +53,7 @@ import Control.Monad.IO.Class
 
 type DPTokenWithRange a = (PositionRange, DPTextToken a)
 type DPTextOutput a m = (MonadIO m, MonadThrow m) => Consumer (DPTextToken a) m ()
+type DPTextFilter a m b = (MonadThrow m) => Conduit (DPTextToken a) m (DPTextToken b)
 
 
 conduitDPText :: (MonadThrow m) => Conduit B.ByteString m (DPTokenWithRange B.ByteString)
@@ -63,11 +68,11 @@ parseDPText :: (MonadThrow m) => Conduit B.ByteString m (DPTextToken B.ByteStrin
 parseDPText = conduitDPText =$= withoutRange
 
 
-stripColors :: (MonadThrow m) => Conduit (DPTextToken a) m (DPTextToken a)
+stripColors :: DPTextFilter a m a
 stripColors = CL.filter isTextData
 
 
-removeUnnecessaryColors :: (MonadThrow m) => Conduit (DPTextToken a) m (DPTextToken a)
+removeUnnecessaryColors :: DPTextFilter a m a
 removeUnnecessaryColors = do
     m1 <- await
     m2 <- await
@@ -83,7 +88,7 @@ removeUnnecessaryColors = do
         _   -> return ()
 
 
-minimizeColorsFrom :: (Eq a, MonadThrow m) => DPTextToken a -> Conduit (DPTextToken a) m (DPTextToken a)
+minimizeColorsFrom :: (Eq a) => DPTextToken a -> DPTextFilter a m a
 minimizeColorsFrom sc = removeUnnecessaryColors =$= do
     mt <- await
     case mt of
@@ -101,7 +106,7 @@ minimizeColorsFrom sc = removeUnnecessaryColors =$= do
         | otherwise = (c, True)
 
 
-minimizeColors :: (Eq a, MonadThrow m) => Conduit (DPTextToken a) m (DPTextToken a)
+minimizeColors :: (Eq a) => DPTextFilter a m a
 minimizeColors = minimizeColorsFrom (SimpleColor 0)
 
 
@@ -109,20 +114,20 @@ toText :: (IsString a, MonadThrow m) => Conduit (DPTextToken a) m a
 toText = CL.map tokenToText
 
 
-simplifyColors :: (MonadThrow m) => Conduit (DPTextToken a) m (DPTextToken a)
+simplifyColors :: DPTextFilter a m a
 simplifyColors = CL.map convert
   where
     convert (HexColor h) = SimpleColor (simplifyColor h)
     convert x = x
 
 
-toUTF :: (MonadThrow m) => DecodeType -> Conduit (DPTextToken B.ByteString) m (DPTextToken T.Text)
+toUTF :: DecodeType -> DPTextFilter B.ByteString m T.Text
 toUTF dec_type = CL.map $ mapTextToken decodeFun
   where
     decodeFun = decodeQFontUTF (dec_type /= NexuizDecode) . decode dec_type
 
 
-toASCII :: (MonadThrow m) => DecodeType -> Conduit (DPTextToken B.ByteString) m (DPTextToken T.Text)
+toASCII :: DecodeType -> DPTextFilter B.ByteString m T.Text
 toASCII dec_type = CL.map $ mapTextToken decodeFun
   where
     decodeFun = decodeQFontASCII (dec_type /= NexuizDecode) . decode dec_type
