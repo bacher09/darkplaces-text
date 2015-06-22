@@ -1,12 +1,15 @@
-module DarkPlaces.Text.Chars where
+module DarkPlaces.Text.Chars (
+    decodeQFontASCII,
+    decodeQFontUTF
+) where
 import Data.Vector
 import Data.Char
 import DarkPlaces.Text.Classes
 
 
 -- from https://github.com/xonotic/darkplaces/blob/master/console.c#L116
-qfont_ascii_table :: Vector Char
-qfont_ascii_table = fromList [
+qfontAsciiTable :: Vector Char
+qfontAsciiTable = fromList [
      '\0', '#',  '#',  '#',  '#',  '.',  '#',  '#',
      '#',  '\t', '\n', '#',  ' ',  '\r', '.',  '.',
      '[',  ']',  '0',  '1',  '2',  '3',  '4',  '5',
@@ -43,8 +46,8 @@ qfont_ascii_table = fromList [
 
 
 -- from https://github.com/antzucaro/XonStat/blob/master/xonstat/util.py#L64
-qfont_unicode_table :: Vector Char
-qfont_unicode_table = fromList [
+qfontUnicodeTable :: Vector Char
+qfontUnicodeTable = fromList [
     '\32',      '\32',      '\8212',    '\32',
     '\95',      '\10055',   '\8224',    '\183',
     '\128299',  '\32',      '\32',      '\9632',
@@ -124,21 +127,15 @@ decodeQFontOld :: (CharMap a) => Vector Char -> a -> a
 decodeQFontOld qtable = mapChars replace_char
   where
     replace_char c = if '\0' <= c && c <= '\255' && c /= '\n'
-        then qtable ! (ord c)
+        then qtable ! ord c
         else c
 
 
--- also 42 and 96 are mappend in nexuiz
-isOldGlyph :: Char -> Bool
-isOldGlyph c = ('\0' <= c && c <= '\31' && c /= '\n') ||
-               ('\127' <= c && c <= '\255')
-
-
 decodeQFontASCII :: (CharMap a) => Bool -> a -> a
-decodeQFontASCII True = decodeQFont qfont_ascii_table
-decodeQFontASCII False = decodeQFontOld qfont_ascii_table
+decodeQFontASCII True = decodeQFont qfontAsciiTable
+decodeQFontASCII False = decodeQFontOld qfontAsciiTable
 
 
 decodeQFontUTF :: (CharMap a) => Bool -> a -> a
-decodeQFontUTF True = decodeQFont qfont_unicode_table
-decodeQFontUTF False = decodeQFontOld qfont_unicode_table
+decodeQFontUTF True = decodeQFont qfontUnicodeTable
+decodeQFontUTF False = decodeQFontOld qfontUnicodeTable

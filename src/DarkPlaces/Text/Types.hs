@@ -1,4 +1,18 @@
-module DarkPlaces.Text.Types where
+module DarkPlaces.Text.Types (
+    -- types
+    DPTextToken(..),
+    DecodeType(..),
+    -- type aliases
+    BinDPTextToken,
+    -- funcs
+    isString,
+    isColor,
+    isNewline,
+    isTextData,
+    tokenToText,
+    mapTextToken,
+    decode
+) where
 import qualified Data.ByteString as B
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE

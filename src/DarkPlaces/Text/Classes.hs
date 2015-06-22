@@ -19,10 +19,10 @@ class Printable a where
     hPutPrintableLn h d = hPutPrintableLn h d >> hPutStrLn h ""
 
     putPrintable :: a -> IO ()
-    putPrintable d = hPutPrintable stdout d
+    putPrintable = hPutPrintable stdout
 
     putPrintableLn :: a -> IO ()
-    putPrintableLn d = hPutPrintableLn stdout d
+    putPrintableLn = hPutPrintableLn stdout
 
 
 instance Printable [Char] where

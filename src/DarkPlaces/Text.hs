@@ -159,7 +159,7 @@ outputColors = hOutputColors stdout
 
 
 hOutputNoColors :: (Printable a) => Handle -> DPTextOutput a m
-hOutputNoColors h = stripColors =$= (CL.mapM_  $ liftIO . hPutDPTextTokenPlain h)
+hOutputNoColors h = stripColors =$= CL.mapM_  (liftIO . hPutDPTextTokenPlain h)
 
 
 outputNoColors :: (Printable a) => DPTextOutput a m
@@ -167,7 +167,9 @@ outputNoColors = hOutputNoColors stdout
 
 
 hWithLn :: Handle -> DPTextOutput a m -> DPTextOutput a m
-hWithLn h consumer = addCleanup (const $ liftIO $ hPutChar h '\n') consumer
+hWithLn h consumer = addCleanup (const newline) consumer
+  where
+    newline = liftIO $ hPutChar h '\n'
 
 
 hOutputColorsLn :: (Printable a, Eq a) => Handle -> DPTextOutput a m
