@@ -1,7 +1,6 @@
 module DarkPlaces.Text.Chars where
 import Data.Vector
 import Data.Char
-import DarkPlaces.Text.Types
 import DarkPlaces.Text.Classes
 
 
@@ -143,11 +142,3 @@ decodeQFontASCII False = decodeQFontOld qfont_ascii_table
 decodeQFontUTF :: (CharMap a) => Bool -> a -> a
 decodeQFontUTF True = decodeQFont qfont_unicode_table
 decodeQFontUTF False = decodeQFontOld qfont_unicode_table
-
-
-decodeDPTextASCII :: (CharMap a) => Bool -> DPText a -> DPText a
-decodeDPTextASCII is_new = mapDPText $ decodeQFontASCII is_new
-
-
-decodeDPTextUTF :: (CharMap a) => Bool -> DPText a -> DPText a
-decodeDPTextUTF is_new = mapDPText $ decodeQFontUTF is_new

@@ -1,194 +1,184 @@
+{-# LANGUAGE RankNTypes #-}
 module DarkPlaces.Text (
-    DPText(..),
+    -- types
     DPTextToken(..),
     DecodeType(..),
-    DPStreamState(..),
-    BinStreamState,
-    PrintStreamArgs(..),
-    BinaryDPText,
-    DecodedDPText,
+    -- functions
+    conduitDPText,
     parseDPText,
-    defaultStreamState,
-    defaultPrintStreamArgs,
+    withoutRange,
     stripColors,
+    minimizeColorsFrom,
     minimizeColors,
     simplifyColors,
-    hPrintDPText,
-    printDPText,
-    hPrintStreamDPText,
-    printStreamDPText,
-    hStreamEnd,
-    streamEnd,
     toUTF,
     toASCII,
+    toText,
+    -- output funcs
+    hOutputColors,
+    outputColors,
+    hOutputNoColors,
+    outputNoColors,
+    hOutputColorsLn,
+    outputColorsLn,
+    hOutputNoColorsLn,
+    outputNoColorsLn,
+    hPutDPTextTokenPlain,
+    hPutDPTextTokenANSI,
+    -- check colors
     hSupportColors,
-    supportColors,
-    hPutDPText,
-    hPutDPTextLn,
-    putDPText,
-    putDPTextLn
+    supportColors
 ) where
 import DarkPlaces.Text.Lexer
 import DarkPlaces.Text.Types
 import DarkPlaces.Text.Colors
 import DarkPlaces.Text.Chars
 import DarkPlaces.Text.Classes
+import qualified Data.ByteString as B
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-import qualified Data.Text.Encoding.Error as TEE
-import System.IO (Handle, stdout, hPutStrLn)
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Lazy.UTF8 as BLU
-import System.Console.ANSI (hSupportsANSI)
+import System.Console.ANSI (hSupportsANSI, hSetSGR)
+import Data.Conduit
+import qualified Data.Conduit.List as CL
+import Data.Conduit.Attoparsec (conduitParser, PositionRange)
+import Control.Monad.Catch (MonadThrow)
+import Control.Monad (when)
 import Data.String
-import Data.Monoid
+import System.IO (Handle, stdout, hPutChar)
+import Control.Monad.IO.Class
 
 
-data PrintStreamArgs = PrintStreamArgs {
-    withColor   :: Bool,
-    streamState :: BinStreamState,
-    decodeFun   :: DecodeFun BL.ByteString T.Text
-}
+type DPTokenWithRange a = (PositionRange, DPTextToken a)
+type DPTextOutput a m = (MonadIO m, MonadThrow m) => Consumer (DPTextToken a) m ()
 
 
-defaultPrintStreamArgs :: PrintStreamArgs
-defaultPrintStreamArgs = PrintStreamArgs True defaultStreamState (toUTF Utf8Lenient)
+conduitDPText :: (MonadThrow m) => Conduit B.ByteString m (DPTokenWithRange B.ByteString)
+conduitDPText = conduitParser dptextToken
 
 
--- | Removes colors from `DPText a`
-stripColors :: DPText a -> DPText a
-stripColors (DPText t) = DPText $ filter isTextData t
+withoutRange :: (MonadThrow m) => Conduit (DPTokenWithRange a) m (DPTextToken a)
+withoutRange = CL.map snd
 
 
-minimizeColors' :: (Eq a) => DPTextToken a -> DPText a -> DPText a
-minimizeColors' sc (DPText t) = DPText $ minimize' t sc
+parseDPText :: (MonadThrow m) => Conduit B.ByteString m (DPTextToken B.ByteString)
+parseDPText = conduitDPText =$= withoutRange
+
+
+stripColors :: (MonadThrow m) => Conduit (DPTextToken a) m (DPTextToken a)
+stripColors = CL.filter isTextData
+
+
+removeUnnecessaryColors :: (MonadThrow m) => Conduit (DPTextToken a) m (DPTextToken a)
+removeUnnecessaryColors = do
+    m1 <- await
+    m2 <- await
+    case (m1, m2) of
+        (Just t1, Nothing) -> yield t1
+        (Just t1, Just t2) | isColor t1, isColor t2 -> do
+            leftover t2
+            removeUnnecessaryColors
+        (Just t1, Just t2) -> do
+            yield t1
+            leftover t2
+            removeUnnecessaryColors
+        _   -> return ()
+
+
+minimizeColorsFrom :: (Eq a, MonadThrow m) => DPTextToken a -> Conduit (DPTextToken a) m (DPTextToken a)
+minimizeColorsFrom sc = removeUnnecessaryColors =$= do
+    mt <- await
+    case mt of
+        Nothing -> return ()
+        Just t -> do
+            let (sc', r) = minimize sc t
+            when r $ yield t
+            minimizeColorsFrom sc'
   where
-    minimize' (x:xs) c
-        | isColor x && x == c = minimize' xs c
-        | isColor x = x : minimize' xs x
-        | isNewline x = x : minimize' xs start_color
-        | otherwise = x : minimize' xs c
-
-    minimize' [] _ = []
-    start_color = SimpleColor 0
+    resetColor = SimpleColor 0
+    minimize c x
+        | isColor x && x == c = (c, False)
+        | isColor x = (x, True)
+        | isNewline x = (resetColor, True)
+        | otherwise = (c, True)
 
 
-minimizeColors :: (Eq a) => DPText a -> DPText a
-minimizeColors = minimizeColors' (SimpleColor 0)
+minimizeColors :: (Eq a, MonadThrow m) => Conduit (DPTextToken a) m (DPTextToken a)
+minimizeColors = minimizeColorsFrom (SimpleColor 0)
 
 
-simplifyColors :: DPText a -> DPText a
-simplifyColors (DPText t) =  DPText $ map convert t
+toText :: (IsString a, MonadThrow m) => Conduit (DPTextToken a) m a
+toText = CL.map tokenToText
+
+
+simplifyColors :: (MonadThrow m) => Conduit (DPTextToken a) m (DPTextToken a)
+simplifyColors = CL.map convert
   where
     convert (HexColor h) = SimpleColor (simplifyColor h)
     convert x = x
 
 
-splitStreamDPText :: DPStreamState a -> DPText a -> (DPText a, DPStreamState a)
-splitStreamDPText st (DPText t) = (\(a, b) -> (DPText a, b)) $ go t st
+toUTF :: (MonadThrow m) => DecodeType -> Conduit (DPTextToken B.ByteString) m (DPTextToken T.Text)
+toUTF dec_type = CL.map $ mapTextToken decodeFun
   where
-    go [] st = ([], st)
-    go [DPString s] st = ([], st {streamLeft=s})
-    go (x:xs) st = let st' = if isColor x then st {streamColor=x} else st
-                       (xs', st'') = go xs st'
-                   in (x : xs', st'')
+    decodeFun = decodeQFontUTF (dec_type /= NexuizDecode) . decode dec_type
 
 
-parseStreamDPText :: BinStreamState -> BL.ByteString -> (BinaryDPText, BinStreamState)
-parseStreamDPText st bin_data = splitStreamDPText st' dp_text
+toASCII :: (MonadThrow m) => DecodeType -> Conduit (DPTextToken B.ByteString) m (DPTextToken T.Text)
+toASCII dec_type = CL.map $ mapTextToken decodeFun
   where
-    dp_text = parseDPText $ streamLeft st <> bin_data
-    st' = st {streamLeft=BL.empty}
+    decodeFun = decodeQFontASCII (dec_type /= NexuizDecode) . decode dec_type
 
 
-printColors :: (Printable a, Eq a) => Handle -> DPText a -> IO ()
-printColors h = hPutPrintable h . minimizeColors . simplifyColors
+hPutDPTextTokenPlain :: (Printable a) => Handle -> DPTextToken a -> IO ()
+hPutDPTextTokenPlain h t = case t of
+    (DPString s) -> hPutPrintable h s
+    DPNewline    -> hPutChar h '\n'
+    _            -> return ()
 
 
-printStreamColors :: (Printable a, Eq a) => Handle -> DPStreamState a -> DPText a -> IO ()
-printStreamColors h st = hPutPrintable h . minimizeColors' (streamColor st) . simplifyColors
+hPutDPTextTokenANSI :: (Printable a) => Handle -> DPTextToken a -> IO ()
+hPutDPTextTokenANSI h t = case t of
+    (SimpleColor c) -> hSetSGR h (getColor c)
+    (DPString s)    -> hPutPrintable h s
+    DPNewline       -> hPutChar h '\n' >> hReset h
+    _               -> return ()
 
 
-hPutDPText :: (Printable a, Eq a) => Handle -> DPText a -> IO ()
-hPutDPText h t = printColors h t >> hReset h
-
-
-hPutDPTextNoColors :: (Printable a, Eq a) => Handle -> DPText a -> IO ()
-hPutDPTextNoColors h t = putDPTextNoReset h $ stripColors t
-
-
-hPutDPTextLn :: (Printable a, Eq a) => Handle -> DPText a -> IO ()
-hPutDPTextLn h t = hPutDPText h t >> hPutStrLn h ""
-
--- | prints `DPText` to console using utf8 encoding
-putDPText :: (Printable a, Eq a) => DPText a -> IO ()
-putDPText = hPutDPText stdout
-
--- | same as `putStrUtf` but with newline break at the end
-putDPTextLn :: (Printable a, Eq a) => DPText a -> IO ()
-putDPTextLn = hPutDPTextLn stdout
-
--- | Will print color message if first arg is True
--- | or if handle is terminal device
-hPrintDPText ::(Printable a, Eq a) => Handle -> DecodeFun BL.ByteString a -> Bool -> BL.ByteString -> IO ()
-hPrintDPText handle fun color text = if color
-    then hPutDPText handle dptext
-    else hPutDPTextNoColors handle dptext
+hOutputColors :: (Printable a, Eq a) => Handle -> DPTextOutput a m
+hOutputColors h = simplifyColors =$= minimizeColors =$= output
   where
-    dptext = fun $ parseDPText text
+    output = addCleanup (const $ liftIO $ hReset h) (CL.mapM_ $ liftIO . hPutDPTextTokenANSI h)
 
 
-printDPText :: (Printable a, Eq a) => DecodeFun BL.ByteString a -> Bool -> BL.ByteString -> IO ()
-printDPText = hPrintDPText stdout
+outputColors :: (Printable a, Eq a) => DPTextOutput a m
+outputColors = hOutputColors stdout
 
 
-hPrintStreamDPText :: Handle -> PrintStreamArgs -> BL.ByteString -> IO BinStreamState
-hPrintStreamDPText h (PrintStreamArgs color st fun) bin = (if color
-    then printStreamColors h st_dec dptext
-    else hPutDPTextNoColors h dptext) >> return st'
-  where
-    (bintext, st') = parseStreamDPText st bin
-    dptext = fun bintext
-    st_dec = mapDPTextStream (const T.empty) st
+hOutputNoColors :: (Printable a) => Handle -> DPTextOutput a m
+hOutputNoColors h = stripColors =$= (CL.mapM_  $ liftIO . hPutDPTextTokenPlain h)
 
 
-printStreamDPText :: PrintStreamArgs -> BL.ByteString -> IO BinStreamState
-printStreamDPText = hPrintStreamDPText stdout
+outputNoColors :: (Printable a) => DPTextOutput a m
+outputNoColors = hOutputNoColors stdout
 
 
-hStreamEnd :: Handle -> Bool -> BinStreamState -> IO ()
-hStreamEnd h color st = if color && streamColor st /= (SimpleColor 0)
-    then hReset h
-    else return ()
+hWithLn :: Handle -> DPTextOutput a m -> DPTextOutput a m
+hWithLn h consumer = addCleanup (const $ liftIO $ hPutChar h '\n') consumer
 
 
-streamEnd :: Bool -> BinStreamState -> IO ()
-streamEnd = hStreamEnd stdout
+hOutputColorsLn :: (Printable a, Eq a) => Handle -> DPTextOutput a m
+hOutputColorsLn h = hWithLn h (hOutputColors h)
 
 
-instance IsString (DPText BL.ByteString) where
-    fromString = parseDPText . BLU.fromString
+outputColorsLn :: (Printable a, Eq a) => DPTextOutput a m
+outputColorsLn = hOutputColorsLn stdout
 
 
-toDecodedDPText :: DecodeType -> BinaryDPText -> DecodedDPText
-toDecodedDPText dec_type = mapDPText (decodeFun dec_type . BL.toStrict)
-  where
-    decodeFun Utf8Lenient = TE.decodeUtf8With TEE.lenientDecode
-    decodeFun Utf8Ignore = TE.decodeUtf8With TEE.ignore
-    decodeFun Utf8Strict = TE.decodeUtf8With TEE.strictDecode
-    decodeFun NexuizDecode = TE.decodeLatin1
+hOutputNoColorsLn :: (Printable a) => Handle -> DPTextOutput a m
+hOutputNoColorsLn h = hWithLn h (hOutputNoColors h)
 
 
-toUTF :: DecodeType -> BinaryDPText -> DecodedDPText
-toUTF dec_type bin_text = decodeDPTextUTF (dec_type /= NexuizDecode) dec_text
-  where
-    dec_text = toDecodedDPText dec_type bin_text
-
-
-toASCII :: DecodeType -> BinaryDPText -> DecodedDPText
-toASCII dec_type bin_text = decodeDPTextASCII (dec_type /= NexuizDecode) dec_text
-  where
-    dec_text = toDecodedDPText dec_type bin_text
+outputNoColorsLn :: (Printable a) => DPTextOutput a m
+outputNoColorsLn = hOutputNoColorsLn stdout
 
 
 hSupportColors :: Handle -> IO Bool

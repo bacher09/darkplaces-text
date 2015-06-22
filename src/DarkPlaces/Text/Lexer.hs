@@ -1,12 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
-module DarkPlaces.Text.AttoLexer (
+module DarkPlaces.Text.Lexer (
     dptextToken
 ) where
 import Data.Attoparsec.ByteString hiding (takeWhile1)
 import Data.Attoparsec.ByteString.Char8 (isDigit_w8, char, takeWhile1)
 import Control.Applicative
 import DarkPlaces.Text.Types
-import qualified Data.ByteString as B
 import Data.Word
 import Data.Bits (shiftL, (.|.))
 
@@ -36,14 +35,14 @@ threeHex = convert <$> hexdigitInt <*> hexdigitInt <*> hexdigitInt
     convert a b c = (a `shiftL` 8) .|. (b `shiftL` 4) .|. c
 
 
-color :: Parser (DPTextToken B.ByteString)
+color :: Parser BinDPTextToken
 color = char '^' *> (hex <|> simple) <?> "color"
   where
     simple = SimpleColor <$> digitInt
     hex = char 'x' *> (HexColor <$> threeHex)
 
 
-dptextToken :: Parser (DPTextToken B.ByteString)
+dptextToken :: Parser BinDPTextToken
 dptextToken = newline <|> color <|> (other <?> "other")
   where
     newline = char '\n' *> return DPNewline
