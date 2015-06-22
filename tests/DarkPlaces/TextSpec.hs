@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings, FlexibleInstances, RankNTypes #-}
 module DarkPlaces.TextSpec (
     spec
 ) where
@@ -15,6 +15,7 @@ import Data.Conduit
 import qualified Data.Conduit.List as CL
 import Control.Monad (join)
 import Data.Monoid
+import Data.Functor.Identity
 
 
 instance Arbitrary B.ByteString where
@@ -60,8 +61,24 @@ spec = do
             \xs -> repr (fromByteString ( repr $ fromBinDPText xs)) == repr (fromBinDPText xs)
 
     describe "stripColors" $ do
-        it "should remove colors tokens" $ do
-            property $ \xs -> not $ any isColor (concat $ fromBinDPText xs =$= stripColors $$ CL.consume)
+        it "should remove colors tokens" $ property $
+            \xs -> not $ any isColor (concat $ fromBinDPText xs =$= stripColors $$ CL.consume)
+
+        it "for \"^1test ^2fast\" should return \"test fast\"" $ do
+            let res = toBin $ fromBinDPText "^1test ^2fast" =$= stripColors
+            res `shouldBe` "test fast"
+
+    describe "minimizeColors" $ do
+        it "should reduce number of colors" $ do
+            let res = toBin $ fromBinDPText "^0^1^2test hah^7lala\n^0hello" =$= minimizeColors
+            res `shouldBe` "^2test hah^7lala\nhello"
+
+    describe "simplifyColors" $ do
+        it "should simplify ^x000 to ^0" $ do
+            let res = toBin $ fromBinDPText "^x000Haha" =$= simplifyColors
+            res `shouldBe` "^0Haha"
   where
     lower = BC.map toLower
     repr dpcon = mconcat $ dpcon =$= toText $$ concatText
+    toBin :: Producer Identity (DPTextToken B.ByteString) -> BinDPText
+    toBin v = runIdentity $ toBinDPText v

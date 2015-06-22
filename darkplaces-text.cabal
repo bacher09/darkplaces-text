@@ -61,9 +61,10 @@ test-suite tests
                        QuickCheck >= 2.5,
                        hspec,
                        conduit >= 1.1 && < 1.3,
-                       conduit-extra
+                       conduit-extra,
+                       transformers
 
-  other-extensions:  OverloadedStrings, FlexibleInstances
+  other-extensions:  OverloadedStrings, FlexibleInstances, RankNTypes
 
 source-repository head
   type:                git
