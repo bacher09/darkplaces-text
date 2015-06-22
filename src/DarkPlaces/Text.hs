@@ -8,8 +8,8 @@ module DarkPlaces.Text (
     DPTextOutput,
     DPTextFilter,
     -- newtypes
-    BinDPText,
-    DPText,
+    BinDPText(..),
+    DPText(..),
     -- functions
     conduitDPText,
     parseDPText,
@@ -24,6 +24,9 @@ module DarkPlaces.Text (
     -- convert funcs
     fromBinDPText,
     fromDPText,
+    fromByteString,
+    -- util funcs
+    concatText,
     -- output funcs
     hOutputColors,
     outputColors,
@@ -56,6 +59,7 @@ import Data.String
 import System.IO (Handle, stdout, hPutChar)
 import Control.Monad.IO.Class
 import qualified Data.ByteString.UTF8 as BU
+import Data.Monoid
 
 
 type DPTokenWithRange a = (PositionRange, DPTextToken a)
@@ -71,14 +75,24 @@ newtype DPText = DPText [DPTextToken T.Text]
 instance IsString BinDPText where
     fromString s = BinDPText $ join $ stream $$ CL.consume
       where
-        stream = CL.sourceList [BU.fromString s] =$= parseDPText
+        stream = fromByteString $ BU.fromString s
+
+
+instance Monoid BinDPText where
+    mempty = BinDPText []
+    (BinDPText a) `mappend` (BinDPText b) = BinDPText $ a <> b
 
 
 instance IsString DPText where
     fromString s = DPText $ join $ stream $$ CL.consume
       where
         mapDecode = CL.map $ mapTextToken (decode Utf8Lenient)
-        stream = CL.sourceList [BU.fromString s] =$= parseDPText =$= mapDecode
+        stream = fromByteString (BU.fromString s) =$= mapDecode
+
+
+instance Monoid DPText where
+    mempty = DPText []
+    (DPText a) `mappend` (DPText b) = DPText $ a <> b
 
 
 conduitDPText :: (MonadThrow m) => Conduit B.ByteString m (DPTokenWithRange B.ByteString)
@@ -99,6 +113,10 @@ fromBinDPText (BinDPText lst) = CL.sourceList lst
 
 fromDPText :: (Monad m) => DPText -> Producer m (DPTextToken T.Text)
 fromDPText (DPText lst) = CL.sourceList lst
+
+
+fromByteString :: (MonadThrow m) => B.ByteString -> Producer m (DPTextToken B.ByteString)
+fromByteString bs = CL.sourceList [bs] =$= parseDPText
 
 
 stripColors :: DPTextFilter a m a
@@ -145,6 +163,10 @@ minimizeColors = minimizeColorsFrom (SimpleColor 0)
 
 toText :: (IsString a, Monad m) => Conduit (DPTextToken a) m a
 toText = CL.map tokenToText
+
+
+concatText :: (Monoid a, Monad m) => Consumer a m a
+concatText = mconcat `fmap` CL.consume
 
 
 simplifyColors :: DPTextFilter a m a

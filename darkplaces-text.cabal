@@ -59,9 +59,11 @@ test-suite tests
                        bytestring >=0.10 && <0.11,
                        darkplaces-text,
                        QuickCheck >= 2.5,
-                       hspec
+                       hspec,
+                       conduit >= 1.1 && < 1.3,
+                       conduit-extra
 
-  default-extensions:  OverloadedStrings, FlexibleInstances
+  other-extensions:  OverloadedStrings, FlexibleInstances
 
 source-repository head
   type:                git

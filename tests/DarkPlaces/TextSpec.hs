@@ -1,41 +1,45 @@
+{-# LANGUAGE OverloadedStrings, FlexibleInstances #-}
 module DarkPlaces.TextSpec (
     spec
 ) where
 import Test.Hspec
+import Test.QuickCheck
 import DarkPlaces.Text
 import DarkPlaces.Text.Types
-import Test.QuickCheck
 import Control.Applicative
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Lazy.Char8 as BLC
-import Data.Char
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as BC
+import Data.Word
+import Data.Char (toLower)
+import Data.Conduit
+import qualified Data.Conduit.List as CL
+import Control.Monad (join)
 import Data.Monoid
 
 
-instance Arbitrary BL.ByteString where
-    arbitrary = BL.pack <$> arbitrary
+instance Arbitrary B.ByteString where
+    arbitrary = B.pack <$> arbitrary
 
 
-instance Arbitrary (DPTextToken BL.ByteString) where
+instance Arbitrary (DPTextToken B.ByteString) where
     arbitrary = do
         t <- choose (0, 3) :: Gen Int
         case t of
             0 -> SimpleColor <$> choose (0, 9)
             1 -> HexColor <$> choose (0, 0xFFF)
-            2 -> DPString <$> arWithNoTockens
+            2 -> DPString <$> arTextTocken
             3 -> return DPNewline
 
 
-instance Arbitrary (DPText BL.ByteString) where
-    arbitrary = DPText <$> arbitrary
+instance Arbitrary BinDPText where
+    arbitrary = BinDPText <$> arbitrary
 
 
-arWithNoTockens :: Gen BL.ByteString
-arWithNoTockens = do
-    res <- arbitrary
-    case parseDPText res of
-        DPText [DPString s] -> return s
-        _                   -> arWithNoTockens
+arTextTocken :: Gen B.ByteString
+arTextTocken = B.pack <$> listOf1 wCarpet
+  where
+    wCarpet :: Gen Word8
+    wCarpet = (\i -> if i >= 94 then i + 1 else i) <$> choose(0, 254)
 
 
 spec :: Spec
@@ -47,19 +51,17 @@ spec = do
                       DPString "two",HexColor 4095,DPString "three",
                       DPNewline,DPString "four"]
 
-            parseDPText "^1one^2two^xfffthree\nfour" `shouldBe` res
+            "^1one^2two^xfffthree\nfour" `shouldBe` res
 
-        it "parsing string and converting back to string give same str" $ do
-            property $ \xs -> lower (toText $ parseDPText xs) == lower xs
+        it "parsing string and converting back to string give same str" $
+            property $ \xs -> lower (repr $ fromByteString xs) == lower xs
 
         it "converting to string and parsing gives same result" $ property $
-            \xs -> toText (parseDPText $ toText xs) == toText xs
-
-        it "check monoid property" $ property $
-            \f s -> toText (f <> s) == (toText f :: BL.ByteString) <> (toText s)
+            \xs -> repr (fromByteString ( repr $ fromBinDPText xs)) == repr (fromBinDPText xs)
 
     describe "stripColors" $ do
-        it "should remove colors tokens" $ property $
-            \xs -> (\(DPText s) -> not $ any isColor s) (stripColors xs :: DPText BL.ByteString)
+        it "should remove colors tokens" $ do
+            property $ \xs -> not $ any isColor (concat $ fromBinDPText xs =$= stripColors $$ CL.consume)
   where
-    lower = BLC.map toLower
+    lower = BC.map toLower
+    repr dpcon = mconcat $ dpcon =$= toText $$ concatText
