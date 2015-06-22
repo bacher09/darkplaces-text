@@ -7,6 +7,9 @@ module DarkPlaces.Text (
     DPTokenWithRange,
     DPTextOutput,
     DPTextFilter,
+    -- newtypes
+    BinDPText,
+    DPText,
     -- functions
     conduitDPText,
     parseDPText,
@@ -18,6 +21,9 @@ module DarkPlaces.Text (
     toUTF,
     toASCII,
     toText,
+    -- convert funcs
+    fromBinDPText,
+    fromDPText,
     -- output funcs
     hOutputColors,
     outputColors,
@@ -45,27 +51,54 @@ import Data.Conduit
 import qualified Data.Conduit.List as CL
 import Data.Conduit.Attoparsec (conduitParser, PositionRange)
 import Control.Monad.Catch (MonadThrow)
-import Control.Monad (when)
+import Control.Monad (when, join)
 import Data.String
 import System.IO (Handle, stdout, hPutChar)
 import Control.Monad.IO.Class
+import qualified Data.ByteString.UTF8 as BU
 
 
 type DPTokenWithRange a = (PositionRange, DPTextToken a)
-type DPTextOutput a m = (MonadIO m, MonadThrow m) => Consumer (DPTextToken a) m ()
-type DPTextFilter a m b = (MonadThrow m) => Conduit (DPTextToken a) m (DPTextToken b)
+type DPTextOutput a m = (MonadIO m) => Consumer (DPTextToken a) m ()
+type DPTextFilter a m b = (Monad m) => Conduit (DPTextToken a) m (DPTextToken b)
+newtype BinDPText = BinDPText [DPTextToken B.ByteString]
+    deriving (Show, Eq)
+
+newtype DPText = DPText [DPTextToken T.Text]
+    deriving (Show, Eq)
+
+
+instance IsString BinDPText where
+    fromString s = BinDPText $ join $ stream $$ CL.consume
+      where
+        stream = CL.sourceList [BU.fromString s] =$= parseDPText
+
+
+instance IsString DPText where
+    fromString s = DPText $ join $ stream $$ CL.consume
+      where
+        mapDecode = CL.map $ mapTextToken (decode Utf8Lenient)
+        stream = CL.sourceList [BU.fromString s] =$= parseDPText =$= mapDecode
 
 
 conduitDPText :: (MonadThrow m) => Conduit B.ByteString m (DPTokenWithRange B.ByteString)
 conduitDPText = conduitParser dptextToken
 
 
-withoutRange :: (MonadThrow m) => Conduit (DPTokenWithRange a) m (DPTextToken a)
+withoutRange :: (Monad m) => Conduit (DPTokenWithRange a) m (DPTextToken a)
 withoutRange = CL.map snd
 
 
 parseDPText :: (MonadThrow m) => Conduit B.ByteString m (DPTextToken B.ByteString)
 parseDPText = conduitDPText =$= withoutRange
+
+
+fromBinDPText :: (Monad m) => BinDPText -> Producer m (DPTextToken B.ByteString)
+fromBinDPText (BinDPText lst) = CL.sourceList lst
+
+
+fromDPText :: (Monad m) => DPText -> Producer m (DPTextToken T.Text)
+fromDPText (DPText lst) = CL.sourceList lst
 
 
 stripColors :: DPTextFilter a m a
@@ -110,7 +143,7 @@ minimizeColors :: (Eq a) => DPTextFilter a m a
 minimizeColors = minimizeColorsFrom (SimpleColor 0)
 
 
-toText :: (IsString a, MonadThrow m) => Conduit (DPTextToken a) m a
+toText :: (IsString a, Monad m) => Conduit (DPTextToken a) m a
 toText = CL.map tokenToText
 
 
