@@ -11,13 +11,8 @@ module DarkPlaces.Text (
     BinDPText(..),
     DPText(..),
     -- functions
-    conduitDPText,
     parseDPText,
-    withoutRange,
     stripColors,
-    minimizeColorsFrom,
-    minimizeColors,
-    simplifyColors,
     toUTF,
     toASCII,
     toText,
@@ -25,6 +20,8 @@ module DarkPlaces.Text (
     fromBinDPText,
     fromDPText,
     fromByteString,
+    toBinDPText,
+    toDPText,
     -- util funcs
     concatText,
     -- output funcs
@@ -36,8 +33,15 @@ module DarkPlaces.Text (
     outputColorsLn,
     hOutputNoColorsLn,
     outputNoColorsLn,
+    -- low level output
     hPutDPTextTokenPlain,
     hPutDPTextTokenANSI,
+    -- low level funcs
+    conduitDPText,
+    withoutRange,
+    minimizeColorsFrom,
+    minimizeColors,
+    simplifyColors,
     -- check colors
     hSupportColors,
     supportColors
@@ -54,22 +58,27 @@ import Data.Conduit
 import qualified Data.Conduit.List as CL
 import Data.Conduit.Attoparsec (conduitParser, PositionRange)
 import Control.Monad.Catch (MonadThrow)
-import Control.Monad (when, join)
+import Control.Monad (when, join, liftM)
 import Data.String
 import System.IO (Handle, stdout, hPutChar)
 import Control.Monad.IO.Class
 import qualified Data.ByteString.UTF8 as BU
 import Data.Monoid
+import Data.Function (on)
 
 
 type DPTokenWithRange a = (PositionRange, DPTextToken a)
 type DPTextOutput a m = (MonadIO m) => Consumer (DPTextToken a) m ()
 type DPTextFilter a m b = (Monad m) => Conduit (DPTextToken a) m (DPTextToken b)
 newtype BinDPText = BinDPText [DPTextToken B.ByteString]
-    deriving (Show, Eq)
+    deriving (Show)
 
 newtype DPText = DPText [DPTextToken T.Text]
-    deriving (Show, Eq)
+    deriving (Show)
+
+
+instance Eq BinDPText where
+    (==) = (==) `on` (\(BinDPText v) -> minimizeTextTockens v)
 
 
 instance IsString BinDPText where
@@ -81,6 +90,10 @@ instance IsString BinDPText where
 instance Monoid BinDPText where
     mempty = BinDPText []
     (BinDPText a) `mappend` (BinDPText b) = BinDPText $ a <> b
+
+
+instance Eq DPText where
+    (==) = (==) `on` (\(DPText v) -> minimizeTextTockens v)
 
 
 instance IsString DPText where
@@ -111,8 +124,16 @@ fromBinDPText :: (Monad m) => BinDPText -> Producer m (DPTextToken B.ByteString)
 fromBinDPText (BinDPText lst) = CL.sourceList lst
 
 
+toBinDPText :: (Monad m) => Producer m (DPTextToken B.ByteString) -> m BinDPText
+toBinDPText stream = liftM BinDPText $ stream $$ CL.consume
+
+
 fromDPText :: (Monad m) => DPText -> Producer m (DPTextToken T.Text)
 fromDPText (DPText lst) = CL.sourceList lst
+
+
+toDPText :: (Monad m) => Producer m (DPTextToken T.Text) -> m DPText
+toDPText stream = liftM DPText $ stream $$ CL.consume
 
 
 fromByteString :: (MonadThrow m) => B.ByteString -> Producer m (DPTextToken B.ByteString)
@@ -249,3 +270,10 @@ hSupportColors = hSupportsANSI
 
 supportColors :: IO Bool
 supportColors = hSupportColors stdout
+
+
+minimizeTextTockens :: (Monoid a) => [DPTextToken a] -> [DPTextToken a]
+minimizeTextTockens ts = case ts of
+    (DPString f):(DPString s):xs -> DPString (f <> s) : minimizeTextTockens xs
+    x:xs                         -> x : minimizeTextTockens xs
+    []                           -> []
