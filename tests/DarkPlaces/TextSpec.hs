@@ -53,6 +53,8 @@ spec = do
                       DPNewline,DPString "four"]
 
             "^1one^2two^xfffthree\nfour" `shouldBe` res
+            dp_empty <- toBinDPText $ (yield "") =$= parseDPText
+            dp_empty `shouldBe` (BinDPText [])
 
         it "parsing string and converting back to string give same str" $
             property $ \xs -> lower (repr $ fromByteString xs) == lower xs
