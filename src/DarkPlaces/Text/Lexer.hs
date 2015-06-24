@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module DarkPlaces.Text.Lexer (
-    dptextToken
+    dptextToken,
+    maybeDPTextToken
 ) where
 import Data.Attoparsec.ByteString hiding (takeWhile1)
 import Data.Attoparsec.ByteString.Char8 (isDigit_w8, char, takeWhile1)
@@ -48,3 +49,7 @@ dptextToken = newline <|> color <|> (other <?> "other")
     newline = char '\n' *> return DPNewline
     other = DPString <$> (takeWhile1 (\c -> c /= '\n' && c /= '^') <|> caret)
     caret = char '^' *> return "^"
+
+
+maybeDPTextToken :: Parser (Maybe BinDPTextToken)
+maybeDPTextToken = option Nothing (Just <$> dptextToken)

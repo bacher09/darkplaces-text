@@ -4,7 +4,6 @@ module DarkPlaces.Text (
     DPTextToken(..),
     DecodeType(..),
     -- type synonyms
-    DPTokenWithRange,
     DPTextOutput,
     DPTextFilter,
     -- newtypes
@@ -38,7 +37,6 @@ module DarkPlaces.Text (
     hPutDPTextTokenANSI,
     -- low level funcs
     conduitDPText,
-    withoutRange,
     minimizeColorsFrom,
     minimizeColors,
     simplifyColors,
@@ -67,7 +65,6 @@ import Data.Monoid
 import Data.Function (on)
 
 
-type DPTokenWithRange a = (PositionRange, DPTextToken a)
 type DPTextOutput a m = (MonadIO m) => Consumer (DPTextToken a) m ()
 type DPTextFilter a m b = (Monad m) => Conduit (DPTextToken a) m (DPTextToken b)
 newtype BinDPText = BinDPText [DPTextToken B.ByteString]
@@ -108,16 +105,12 @@ instance Monoid DPText where
     (DPText a) `mappend` (DPText b) = DPText $ a <> b
 
 
-conduitDPText :: (MonadThrow m) => Conduit B.ByteString m (DPTokenWithRange B.ByteString)
-conduitDPText = conduitParser dptextToken
-
-
-withoutRange :: (Monad m) => Conduit (DPTokenWithRange a) m (DPTextToken a)
-withoutRange = CL.map snd
+conduitDPText :: (MonadThrow m) => Conduit B.ByteString m (PositionRange, Maybe BinDPTextToken)
+conduitDPText = conduitParser maybeDPTextToken
 
 
 parseDPText :: (MonadThrow m) => Conduit B.ByteString m (DPTextToken B.ByteString)
-parseDPText = conduitDPText =$= withoutRange
+parseDPText = conduitDPText =$= CL.mapMaybe snd
 
 
 fromBinDPText :: (Monad m) => BinDPText -> Producer m (DPTextToken B.ByteString)
@@ -137,7 +130,7 @@ toDPText stream = liftM DPText $ stream $$ CL.consume
 
 
 fromByteString :: (MonadThrow m) => B.ByteString -> Producer m (DPTextToken B.ByteString)
-fromByteString bs = CL.sourceList [bs] =$= parseDPText
+fromByteString bs = yield bs =$= parseDPText
 
 
 stripColors :: DPTextFilter a m a
