@@ -62,6 +62,7 @@ import System.IO (Handle, stdout, hPutChar)
 import Control.Monad.IO.Class
 import qualified Data.ByteString.UTF8 as BU
 import Data.Monoid
+import Data.Semigroup
 import Data.Function (on)
 
 
@@ -84,9 +85,11 @@ instance IsString BinDPText where
         stream = fromByteString $ BU.fromString s
 
 
+instance Semigroup BinDPText where
+    (BinDPText a) <> (BinDPText b) = BinDPText $ a <> b
+
 instance Monoid BinDPText where
     mempty = BinDPText []
-    (BinDPText a) `mappend` (BinDPText b) = BinDPText $ a <> b
 
 
 instance Eq DPText where
@@ -99,10 +102,11 @@ instance IsString DPText where
         mapDecode = CL.map $ mapTextToken (decode Utf8Lenient)
         stream = fromByteString (BU.fromString s) =$= mapDecode
 
+instance Semigroup DPText where
+    (DPText a) <> (DPText b) = DPText $ a <> b
 
 instance Monoid DPText where
     mempty = DPText []
-    (DPText a) `mappend` (DPText b) = DPText $ a <> b
 
 
 conduitDPText :: (MonadThrow m) => Conduit B.ByteString m (PositionRange, Maybe BinDPTextToken)
