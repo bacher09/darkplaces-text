@@ -53,7 +53,7 @@ spec = do
                       DPNewline,DPString "four"]
 
             "^1one^2two^xfffthree\nfour" `shouldBe` res
-            dp_empty <- toBinDPText $ (yield "") =$= parseDPText
+            dp_empty <- toBinDPText $ (yield "") .| parseDPText
             dp_empty `shouldBe` (BinDPText [])
 
         it "parsing string and converting back to string give same str" $
@@ -64,23 +64,22 @@ spec = do
 
     describe "stripColors" $ do
         it "should remove colors tokens" $ property $
-            \xs -> not $ any isColor (concat $ fromBinDPText xs =$= stripColors $$ CL.consume)
+            \xs -> not $ any isColor (mconcat $ runConduit $ fromBinDPText xs .| stripColors .| CL.consume)
 
         it "for \"^1test ^2fast\" should return \"test fast\"" $ do
-            let res = toBin $ fromBinDPText "^1test ^2fast" =$= stripColors
+            let res = toBin $ fromBinDPText "^1test ^2fast" .| stripColors
             res `shouldBe` "test fast"
 
     describe "minimizeColors" $ do
         it "should reduce number of colors" $ do
-            let res = toBin $ fromBinDPText "^0^1^2test hah^7lala\n^0hello" =$= minimizeColors
+            let res = toBin $ fromBinDPText "^0^1^2test hah^7lala\n^0hello" .| minimizeColors
             res `shouldBe` "^2test hah^7lala\nhello"
 
     describe "simplifyColors" $ do
         it "should simplify ^x000 to ^0" $ do
-            let res = toBin $ fromBinDPText "^x000Haha" =$= simplifyColors
+            let res = toBin $ fromBinDPText "^x000Haha" .| simplifyColors
             res `shouldBe` "^0Haha"
   where
     lower = BC.map toLower
-    repr dpcon = mconcat $ dpcon =$= toText $$ concatText
-    toBin :: Producer Identity (DPTextToken B.ByteString) -> BinDPText
+    repr dpcon = mconcat $ runConduit $ dpcon .| toText .| concatText
     toBin v = runIdentity $ toBinDPText v

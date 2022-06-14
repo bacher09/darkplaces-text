@@ -61,13 +61,11 @@ import Data.String
 import System.IO (Handle, stdout, hPutChar)
 import Control.Monad.IO.Class
 import qualified Data.ByteString.UTF8 as BU
-import Data.Monoid
-import Data.Semigroup
 import Data.Function (on)
 
 
-type DPTextOutput a m = (MonadIO m) => Consumer (DPTextToken a) m ()
-type DPTextFilter a m b = (Monad m) => Conduit (DPTextToken a) m (DPTextToken b)
+type DPTextOutput a m = (MonadIO m) => forall o. ConduitT (DPTextToken a) o m ()
+type DPTextFilter a m b = (Monad m) => ConduitT (DPTextToken a) (DPTextToken b) m ()
 newtype BinDPText = BinDPText [DPTextToken B.ByteString]
     deriving (Show)
 
@@ -80,7 +78,7 @@ instance Eq BinDPText where
 
 
 instance IsString BinDPText where
-    fromString s = BinDPText $ join $ stream $$ CL.consume
+    fromString s = BinDPText $ join $ runConduit $ stream .| CL.consume
       where
         stream = fromByteString $ BU.fromString s
 
@@ -97,10 +95,10 @@ instance Eq DPText where
 
 
 instance IsString DPText where
-    fromString s = DPText $ join $ stream $$ CL.consume
+    fromString s = DPText $ join $ runConduit $ stream .| CL.consume
       where
         mapDecode = CL.map $ mapTextToken (decode Utf8Lenient)
-        stream = fromByteString (BU.fromString s) =$= mapDecode
+        stream = fromByteString (BU.fromString s) .| mapDecode
 
 instance Semigroup DPText where
     (DPText a) <> (DPText b) = DPText $ a <> b
@@ -109,32 +107,32 @@ instance Monoid DPText where
     mempty = DPText []
 
 
-conduitDPText :: (MonadThrow m) => Conduit B.ByteString m (PositionRange, Maybe BinDPTextToken)
+conduitDPText :: (MonadThrow m) => ConduitT B.ByteString (PositionRange, Maybe BinDPTextToken) m ()
 conduitDPText = conduitParser maybeDPTextToken
 
 
-parseDPText :: (MonadThrow m) => Conduit B.ByteString m (DPTextToken B.ByteString)
-parseDPText = conduitDPText =$= CL.mapMaybe snd
+parseDPText :: (MonadThrow m) => ConduitT B.ByteString (DPTextToken B.ByteString) m ()
+parseDPText = conduitDPText .| CL.mapMaybe snd
 
 
-fromBinDPText :: (Monad m) => BinDPText -> Producer m (DPTextToken B.ByteString)
+fromBinDPText :: (Monad m) => BinDPText -> forall i. ConduitT i (DPTextToken B.ByteString) m ()
 fromBinDPText (BinDPText lst) = CL.sourceList lst
 
 
-toBinDPText :: (Monad m) => Producer m (DPTextToken B.ByteString) -> m BinDPText
-toBinDPText stream = liftM BinDPText $ stream $$ CL.consume
+toBinDPText :: (Monad m) => ConduitT () (DPTextToken B.ByteString) m () -> m BinDPText
+toBinDPText stream = liftM BinDPText $ runConduit $ stream .| CL.consume
 
 
-fromDPText :: (Monad m) => DPText -> Producer m (DPTextToken T.Text)
+fromDPText :: (Monad m) => forall i. DPText -> ConduitT i (DPTextToken T.Text) m ()
 fromDPText (DPText lst) = CL.sourceList lst
 
 
-toDPText :: (Monad m) => Producer m (DPTextToken T.Text) -> m DPText
-toDPText stream = liftM DPText $ stream $$ CL.consume
+toDPText :: (Monad m) => ConduitT () (DPTextToken T.Text) m ()-> m DPText
+toDPText stream = liftM DPText $ runConduit $ stream .| CL.consume
 
 
-fromByteString :: (MonadThrow m) => B.ByteString -> Producer m (DPTextToken B.ByteString)
-fromByteString bs = yield bs =$= parseDPText
+fromByteString :: (MonadThrow m) => forall i. B.ByteString -> ConduitT i (DPTextToken B.ByteString) m ()
+fromByteString bs = yield bs .| parseDPText
 
 
 stripColors :: DPTextFilter a m a
@@ -158,7 +156,7 @@ removeUnnecessaryColors = do
 
 
 minimizeColorsFrom :: (Eq a) => DPTextToken a -> DPTextFilter a m a
-minimizeColorsFrom sc = removeUnnecessaryColors =$= do
+minimizeColorsFrom sc = removeUnnecessaryColors .| do
     mt <- await
     case mt of
         Nothing -> return ()
@@ -179,11 +177,11 @@ minimizeColors :: (Eq a) => DPTextFilter a m a
 minimizeColors = minimizeColorsFrom (SimpleColor 0)
 
 
-toText :: (IsString a, Monad m) => Conduit (DPTextToken a) m a
+toText :: (IsString a, Monad m) => ConduitT (DPTextToken a) a m ()
 toText = CL.map tokenToText
 
 
-concatText :: (Monoid a, Monad m) => Consumer a m a
+concatText :: (Monoid a, Monad m) => forall o. ConduitT a o m a
 concatText = mconcat `fmap` CL.consume
 
 
@@ -222,9 +220,9 @@ hPutDPTextTokenANSI h t = case t of
 
 
 hOutputColors :: (Printable a, Eq a) => Handle -> DPTextOutput a m
-hOutputColors h = simplifyColors =$= minimizeColors =$= output
+hOutputColors h = simplifyColors .| minimizeColors .| output
   where
-    output = addCleanup (const $ liftIO $ hReset h) (CL.mapM_ $ liftIO . hPutDPTextTokenANSI h)
+    output = (CL.mapM_ $ liftIO . hPutDPTextTokenANSI h) >>= (const $ liftIO $ hReset h)
 
 
 outputColors :: (Printable a, Eq a) => DPTextOutput a m
@@ -232,7 +230,7 @@ outputColors = hOutputColors stdout
 
 
 hOutputNoColors :: (Printable a) => Handle -> DPTextOutput a m
-hOutputNoColors h = stripColors =$= CL.mapM_  (liftIO . hPutDPTextTokenPlain h)
+hOutputNoColors h = stripColors .| CL.mapM_  (liftIO . hPutDPTextTokenPlain h)
 
 
 outputNoColors :: (Printable a) => DPTextOutput a m
@@ -240,7 +238,7 @@ outputNoColors = hOutputNoColors stdout
 
 
 hWithLn :: Handle -> DPTextOutput a m -> DPTextOutput a m
-hWithLn h consumer = addCleanup (const newline) consumer
+hWithLn h consumer = consumer >>= const newline
   where
     newline = liftIO $ hPutChar h '\n'
 
