@@ -22,13 +22,10 @@ scaleRGB (RGB (r, g, b)) s = RGB (r * s, g * s, b * s)
 
 
 minMaxRGB :: (Num a, Ord a) => a -> a -> a -> (a, a)
-minMaxRGB r g b = if r > g
-            then if r > b
-                then (if g < b then g else b, r)
-                else (g, b)
-            else if g > b
-                then (if b < r then b else r, g)
-                else (r, b)
+minMaxRGB r g b
+    | r > g = if r > b then (min g b, r) else (g, b)
+    | g > b = (min b r, g)
+    | otherwise = (r, b)
 
 
 rgbToHSV :: RGB -> HSV

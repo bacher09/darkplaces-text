@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module DarkPlaces.Text.Types (
     -- types
     DPTextToken(..),
@@ -25,6 +26,7 @@ data DPTextToken a = SimpleColor Int
                    | HexColor Int
                    | DPNewline
                    | DPString a
+                   | DPEscapedCaret
     deriving(Show, Eq)
 
 
@@ -60,6 +62,7 @@ isTextData = not . isColor
 
 tokenToText :: (IsString a) => DPTextToken a -> a
 tokenToText DPNewline = fromString "\n"
+tokenToText DPEscapedCaret = fromString "^^"
 tokenToText (DPString s) = s
 tokenToText (SimpleColor c) = fromString $ "^" ++ show c
 tokenToText (HexColor c) = fromString $ printf "^x%03X" c
@@ -67,9 +70,10 @@ tokenToText (HexColor c) = fromString $ printf "^x%03X" c
 
 mapTextToken :: (a -> b) -> DPTextToken a -> DPTextToken b
 mapTextToken f (DPString s) = DPString $ f s
-mapTextToken _ DPNewline = DPNewline
 mapTextToken _ (SimpleColor c) = SimpleColor c
 mapTextToken _ (HexColor c) = HexColor c
+mapTextToken _ DPNewline = DPNewline
+mapTextToken _ DPEscapedCaret = DPEscapedCaret
 
 
 decode :: DecodeType -> B.ByteString -> T.Text

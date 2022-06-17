@@ -56,7 +56,7 @@ import Data.Conduit
 import qualified Data.Conduit.List as CL
 import Data.Conduit.Attoparsec (conduitParser, PositionRange)
 import Control.Monad.Catch (MonadThrow)
-import Control.Monad (when, join, liftM)
+import Control.Monad (when, join)
 import Data.String
 import System.IO (Handle, stdout, hPutChar)
 import Control.Monad.IO.Class
@@ -120,7 +120,7 @@ fromBinDPText (BinDPText lst) = CL.sourceList lst
 
 
 toBinDPText :: (Monad m) => ConduitT () (DPTextToken B.ByteString) m () -> m BinDPText
-toBinDPText stream = liftM BinDPText $ runConduit $ stream .| CL.consume
+toBinDPText stream = BinDPText <$> runConduit (stream .| CL.consume)
 
 
 fromDPText :: (Monad m) => forall i. DPText -> ConduitT i (DPTextToken T.Text) m ()
@@ -128,7 +128,7 @@ fromDPText (DPText lst) = CL.sourceList lst
 
 
 toDPText :: (Monad m) => ConduitT () (DPTextToken T.Text) m ()-> m DPText
-toDPText stream = liftM DPText $ runConduit $ stream .| CL.consume
+toDPText stream = DPText <$> runConduit (stream .| CL.consume)
 
 
 fromByteString :: (MonadThrow m) => forall i. B.ByteString -> ConduitT i (DPTextToken B.ByteString) m ()
@@ -213,15 +213,17 @@ toASCII dec_type = CL.map $ mapTextToken decodeFun
 
 hPutDPTextTokenPlain :: (Printable a) => Handle -> DPTextToken a -> IO ()
 hPutDPTextTokenPlain h t = case t of
-    (DPString s) -> hPutPrintable h s
-    DPNewline    -> hPutChar h '\n'
-    _            -> return ()
+    (DPString s)   -> hPutPrintable h s
+    DPEscapedCaret -> hPutChar h '^'
+    DPNewline      -> hPutChar h '\n'
+    _              -> return ()
 
 
 hPutDPTextTokenANSI :: (Printable a) => Handle -> DPTextToken a -> IO ()
 hPutDPTextTokenANSI h t = case t of
     (SimpleColor c) -> hSetSGR h (getColor c)
     (DPString s)    -> hPutPrintable h s
+    DPEscapedCaret  -> hPutChar h '^'
     DPNewline       -> hReset h >> hPutChar h '\n'
     _               -> return ()
 
@@ -229,7 +231,7 @@ hPutDPTextTokenANSI h t = case t of
 hOutputColors :: (Printable a, Eq a) => Handle -> DPTextOutput a m
 hOutputColors h = simplifyColors .| minimizeColors .| output
   where
-    output = (CL.mapM_ $ liftIO . hPutDPTextTokenANSI h) >>= (const $ liftIO $ hReset h)
+    output = CL.mapM_ (liftIO . hPutDPTextTokenANSI h) >>= const (liftIO $ hReset h)
 
 
 outputColors :: (Printable a, Eq a) => DPTextOutput a m

@@ -28,7 +28,7 @@ instance Arbitrary (DPTextToken B.ByteString) where
         case t of
             0 -> SimpleColor <$> choose (0, 9)
             1 -> HexColor <$> choose (0, 0xFFF)
-            2 -> DPString <$> arTextTocken
+            2 -> DPString <$> arTextToken
             3 -> return DPNewline
 
 
@@ -36,8 +36,8 @@ instance Arbitrary BinDPText where
     arbitrary = BinDPText <$> arbitrary
 
 
-arTextTocken :: Gen B.ByteString
-arTextTocken = B.pack <$> listOf1 wCarpet
+arTextToken :: Gen B.ByteString
+arTextToken = B.pack <$> listOf1 wCarpet
   where
     wCarpet :: Gen Word8
     wCarpet = (\i -> if i >= 94 then i + 1 else i) <$> choose(0, 254)
@@ -53,8 +53,8 @@ spec = do
                       DPNewline,DPString "four"]
 
             "^1one^2two^xfffthree\nfour" `shouldBe` res
-            dp_empty <- toBinDPText $ (yield "") .| parseDPText
-            dp_empty `shouldBe` (BinDPText [])
+            dp_empty <- toBinDPText $ yield "" .| parseDPText
+            dp_empty `shouldBe` BinDPText []
 
         it "parsing string and converting back to string give same str" $
             property $ \xs -> lower (repr $ fromByteString xs) == lower xs

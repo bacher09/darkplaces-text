@@ -47,9 +47,10 @@ dptextToken :: Parser BinDPTextToken
 dptextToken = newline <|> color <|> (other <?> "other")
   where
     newline = char '\n' *> return DPNewline
-    other = DPString <$> (takeWhile1 (\c -> c /= '\n' && c /= '^') <|> caret)
-    caret = (string "^^" <|> string "^") *> return "^"
+    other = caret <|> nocaret
+    nocaret = DPString <$> takeWhile1 (\c -> c /= '\n' && c /= '^')
+    caret = string "^^" *> return DPEscapedCaret <|> string "^" *> return (DPString "^")
 
 
 maybeDPTextToken :: Parser (Maybe BinDPTextToken)
-maybeDPTextToken = option Nothing (Just <$> dptextToken)
+maybeDPTextToken = optional dptextToken
