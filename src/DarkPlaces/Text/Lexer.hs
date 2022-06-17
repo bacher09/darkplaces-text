@@ -48,7 +48,7 @@ dptextToken = newline <|> color <|> (other <?> "other")
   where
     newline = char '\n' *> return DPNewline
     other = DPString <$> (takeWhile1 (\c -> c /= '\n' && c /= '^') <|> caret)
-    caret = char '^' *> return "^"
+    caret = (string "^^" <|> string "^") *> return "^"
 
 
 maybeDPTextToken :: Parser (Maybe BinDPTextToken)

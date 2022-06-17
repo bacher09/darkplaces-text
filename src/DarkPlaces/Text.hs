@@ -142,17 +142,24 @@ stripColors = CL.filter isTextData
 removeUnnecessaryColors :: DPTextFilter a m a
 removeUnnecessaryColors = do
     m1 <- await
-    m2 <- await
-    case (m1, m2) of
-        (Just t1, Nothing) -> yield t1
-        (Just t1, Just t2) | isColor t1, isColor t2 -> do
-            leftover t2
-            removeUnnecessaryColors
-        (Just t1, Just t2) -> do
+    case m1 of
+        Just t1 | isColor t1 -> do
+            m2 <- await
+            case m2 of
+                Just t2 | isColor t2 -> do
+                    leftover t2
+                    removeUnnecessaryColors
+                Just t2 -> do
+                    leftover t2
+                    yield t1
+                    removeUnnecessaryColors
+                _ -> do
+                    yield t1
+                    removeUnnecessaryColors
+        Just t1 -> do
             yield t1
-            leftover t2
             removeUnnecessaryColors
-        _   -> return ()
+        Nothing -> return ()
 
 
 minimizeColorsFrom :: (Eq a) => DPTextToken a -> DPTextFilter a m a
@@ -215,7 +222,7 @@ hPutDPTextTokenANSI :: (Printable a) => Handle -> DPTextToken a -> IO ()
 hPutDPTextTokenANSI h t = case t of
     (SimpleColor c) -> hSetSGR h (getColor c)
     (DPString s)    -> hPutPrintable h s
-    DPNewline       -> hPutChar h '\n' >> hReset h
+    DPNewline       -> hReset h >> hPutChar h '\n'
     _               -> return ()
 
 
